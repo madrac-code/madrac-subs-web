@@ -9,13 +9,14 @@ import { CarritoBar } from '@/components/CarritoBar'
 interface MesaClienteProps {
   mesa: Mesa
   menuItems: MenuItem[]
+  restauranteId: string
 }
 
 function cantidadEnCarrito(carrito: CarritoItem[], menuItemId: string): number {
   return carrito.find((c) => c.menuItem.id === menuItemId)?.cantidad ?? 0
 }
 
-export function MesaCliente({ mesa, menuItems }: MesaClienteProps) {
+export function MesaCliente({ mesa, menuItems, restauranteId }: MesaClienteProps) {
   const [carrito, setCarrito] = useState<CarritoItem[]>([])
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -64,7 +65,7 @@ export function MesaCliente({ mesa, menuItems }: MesaClienteProps) {
     setEnviando(true)
     setError(null)
 
-    const resultado = await crearPedido(mesa.id, carrito)
+    const resultado = await crearPedido(mesa.id, carrito, restauranteId)
 
     setEnviando(false)
 

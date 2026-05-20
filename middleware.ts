@@ -3,12 +3,41 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 type CookieToSet = { name: string; value: string; options: CookieOptions }
 
+/** Rutas reservadas que no son slug de restaurante */
+const RUTAS_RESERVADAS = new Set([
+  'login',
+  'onboarding',
+  'dashboard',
+  'auth',
+  'admin',
+  'cocina',
+  'mesa',
+  'api',
+  '_next',
+])
+
+/** /[slug]/mesa/[numero] es público (sin auth) */
+function esMesaPublica(pathname: string): boolean {
+  const segmentos = pathname.split('/').filter(Boolean)
+  return (
+    segmentos.length === 3 &&
+    !RUTAS_RESERVADAS.has(segmentos[0]) &&
+    segmentos[1] === 'mesa'
+  )
+}
+
 /** Rutas que requieren sesión activa */
 function requiereAuth(pathname: string): boolean {
+  if (esMesaPublica(pathname)) return false
   if (pathname.startsWith('/dashboard')) return true
   if (pathname.startsWith('/onboarding')) return true
-  // /[slug]/cocina o /[slug]/admin (no confundir con /admin legacy)
-  return /^\/[^/]+\/(cocina|admin)(\/|$)/.test(pathname)
+  // /[slug]/cocina o /[slug]/admin (no confundir con /admin legacy en raíz)
+  const segmentos = pathname.split('/').filter(Boolean)
+  if (segmentos.length >= 2 && !RUTAS_RESERVADAS.has(segmentos[0])) {
+    const sub = segmentos[1]
+    if (sub === 'cocina' || sub === 'admin') return true
+  }
+  return false
 }
 
 export async function middleware(request: NextRequest) {

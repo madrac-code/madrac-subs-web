@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { RESTAURANTE_DEMO_SLUG } from '@/lib/constants'
 
 export default function MesaNotFound() {
   return (
@@ -9,10 +10,10 @@ export default function MesaNotFound() {
           El número de mesa no existe. Escaneá el código QR de tu mesa.
         </p>
         <Link
-          href="/mesa/1"
+          href={`/${RESTAURANTE_DEMO_SLUG}/mesa/1`}
           className="inline-block mt-4 text-amber-400 underline"
         >
-          Ir a mesa 1 (desarrollo)
+          Ir a mesa 1 (demo)
         </Link>
       </div>
     </main>

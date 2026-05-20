@@ -159,7 +159,8 @@ export type CrearPedidoResult =
 /** Crea un pedido con sus ítems y marca la mesa como ocupada */
 export async function crearPedido(
   mesaId: string,
-  items: CarritoItem[]
+  items: CarritoItem[],
+  restauranteId: string
 ): Promise<CrearPedidoResult> {
   if (items.length === 0) {
     return { ok: false, error: 'El carrito está vacío' }
@@ -169,6 +170,7 @@ export async function crearPedido(
     .from('mesas')
     .select('restaurante_id')
     .eq('id', mesaId)
+    .eq('restaurante_id', restauranteId)
     .single()
 
   if (!mesa?.restaurante_id) {
@@ -179,7 +181,7 @@ export async function crearPedido(
     .from('pedidos')
     .insert({
       mesa_id: mesaId,
-      restaurante_id: mesa.restaurante_id,
+      restaurante_id: restauranteId,
       estado: 'pendiente',
     })
     .select('id')
@@ -258,18 +260,13 @@ function normalizarPedido(raw: PedidoActivoRaw): PedidoActivo {
 }
 
 /** Pedidos no entregados con ítems y número de mesa */
-export async function getPedidosActivos(restauranteId?: string): Promise<PedidoActivo[]> {
-  let query = supabase
+export async function getPedidosActivos(restauranteId: string): Promise<PedidoActivo[]> {
+  const { data, error } = await supabase
     .from('pedidos')
     .select(PEDIDO_ACTIVO_SELECT)
+    .eq('restaurante_id', restauranteId)
     .neq('estado', 'entregado')
     .order('created_at', { ascending: true })
-
-  if (restauranteId) {
-    query = query.eq('restaurante_id', restauranteId)
-  }
-
-  const { data, error } = await query
 
   if (error || !data) return []
   return (data as PedidoActivoRaw[]).map(normalizarPedido)
