@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { RESTAURANTE_DEMO_SLUG } from '@/lib/constants'
+import { resolverRestauranteDelUsuario } from '@/lib/restaurante-usuario'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import type {
   CarritoItem,
@@ -57,6 +58,124 @@ export async function getMesaDemo(numero: number): Promise<{
   const mesa = await getMesaPorNumero(numero, restaurante.id)
   if (!mesa) return null
   return { mesa, restaurante }
+}
+
+export type MutacionMesaResult =
+  | { ok: true; mesa: Mesa }
+  | { ok: false; error: string }
+
+/** Mesas de un restaurante ordenadas por número */
+export async function getMesasDelRestaurante(
+  restauranteId: string,
+  client?: SupabaseClient
+): Promise<Mesa[]> {
+  const { data, error } = await db(client)
+    .from('mesas')
+    .select('*')
+    .eq('restaurante_id', restauranteId)
+    .order('numero', { ascending: true })
+
+  if (error || !data) return []
+  return data as Mesa[]
+}
+
+/** Siguiente número de mesa disponible en un restaurante */
+async function siguienteNumeroMesa(
+  restauranteId: string,
+  client?: SupabaseClient
+): Promise<number> {
+  const { data, error } = await db(client)
+    .from('mesas')
+    .select('numero')
+    .eq('restaurante_id', restauranteId)
+    .order('numero', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error || !data) return 1
+  return data.numero + 1
+}
+
+/** Crea una mesa libre en el restaurante */
+export async function crearMesa(
+  restauranteId: string,
+  numero?: number
+): Promise<MutacionMesaResult> {
+  const numeroFinal =
+    numero ?? (await siguienteNumeroMesa(restauranteId))
+
+  const { data, error } = await supabase
+    .from('mesas')
+    .insert({
+      restaurante_id: restauranteId,
+      numero: numeroFinal,
+      estado: 'libre',
+    })
+    .select()
+    .single()
+
+  if (error || !data) {
+    if (error?.code === '23505') {
+      return { ok: false, error: 'Ya existe una mesa con ese número' }
+    }
+    return { ok: false, error: error?.message ?? 'No se pudo crear la mesa' }
+  }
+  return { ok: true, mesa: data as Mesa }
+}
+
+/** Elimina una mesa (solo si está libre) */
+export async function eliminarMesa(
+  mesaId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data: mesa, error: fetchError } = await supabase
+    .from('mesas')
+    .select('estado')
+    .eq('id', mesaId)
+    .single()
+
+  if (fetchError || !mesa) {
+    return { ok: false, error: 'Mesa no encontrada' }
+  }
+  if (mesa.estado !== 'libre') {
+    return { ok: false, error: 'Solo se puede eliminar una mesa libre' }
+  }
+
+  const { error } = await supabase.from('mesas').delete().eq('id', mesaId)
+
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
+}
+
+/** Actualiza el número de una mesa */
+export async function actualizarMesa(
+  mesaId: string,
+  numero: number
+): Promise<MutacionMesaResult> {
+  const { data, error } = await supabase
+    .from('mesas')
+    .update({ numero })
+    .eq('id', mesaId)
+    .select()
+    .single()
+
+  if (error || !data) {
+    if (error?.code === '23505') {
+      return { ok: false, error: 'Ya existe una mesa con ese número' }
+    }
+    return { ok: false, error: error?.message ?? 'No se pudo actualizar' }
+  }
+  return { ok: true, mesa: data as Mesa }
+}
+
+/** Restaurante del usuario logueado (client; perfil primero, luego owner) */
+export async function getRestauranteActual(): Promise<Restaurante | null> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) return null
+
+  return resolverRestauranteDelUsuario(supabase, user.id)
 }
 
 export type MutacionMenuResult =

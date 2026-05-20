@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import { resolverRestauranteDelUsuario } from '@/lib/restaurante-usuario'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import type { Restaurante, RolPerfil } from '@/types'
 
@@ -18,37 +19,12 @@ export async function requireUser() {
   return { supabase, user }
 }
 
-/** Restaurante del usuario (owner o perfil) o null */
+/** Restaurante del usuario (perfil primero, luego owner) o null */
 export async function getRestauranteDelUsuario(
   userId: string
 ): Promise<Restaurante | null> {
   const supabase = await createServerSupabaseClient()
-
-  const { data: owned } = await supabase
-    .from('restaurantes')
-    .select('*')
-    .eq('owner_id', userId)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle()
-
-  if (owned) return owned as Restaurante
-
-  const { data: perfil } = await supabase
-    .from('perfiles')
-    .select('restaurantes(*)')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle()
-
-  if (!perfil?.restaurantes) return null
-
-  const restaurante = perfil.restaurantes
-  if (Array.isArray(restaurante)) {
-    return (restaurante[0] as Restaurante) ?? null
-  }
-  return restaurante as Restaurante
+  return resolverRestauranteDelUsuario(supabase, userId)
 }
 
 /** Usuario + restaurante o redirect a onboarding */

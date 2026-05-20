@@ -67,10 +67,16 @@ export function DashboardPanel({
         </div>
         <div className="flex flex-wrap gap-2">
           <Link
+            href="/dashboard/mesas"
+            className="inline-flex justify-center px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-sm font-semibold"
+          >
+            Gestionar mesas
+          </Link>
+          <Link
             href="/admin/menu"
             className="inline-flex justify-center px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-sm font-semibold"
           >
-            Gestionar menú →
+            Gestionar menú
           </Link>
           <LogoutButton />
         </div>
