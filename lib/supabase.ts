@@ -1,4 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { RESTAURANTE_DEMO_SLUG } from '@/lib/constants'
+import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import type {
   CarritoItem,
   EstadoPedido,
@@ -8,45 +10,84 @@ import type {
   PedidoActivo,
   PedidoResumen,
   ResumenAdmin,
+  Restaurante,
 } from '@/types'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+export const supabase = createBrowserSupabaseClient()
 
-export const supabase = createClient(supabaseUrl, supabaseKey)
+function db(client?: SupabaseClient) {
+  return client ?? supabase
+}
 
-/** Busca una mesa por su número visible al cliente */
-export async function getMesaPorNumero(numero: number): Promise<Mesa | null> {
+/** Restaurante por slug (menú público / demo) */
+export async function getRestaurantePorSlug(slug: string): Promise<Restaurante | null> {
+  const { data, error } = await supabase
+    .from('restaurantes')
+    .select('*')
+    .eq('slug', slug)
+    .maybeSingle()
+
+  if (error || !data) return null
+  return data as Restaurante
+}
+
+/** Busca una mesa por número dentro de un restaurante */
+export async function getMesaPorNumero(
+  numero: number,
+  restauranteId: string
+): Promise<Mesa | null> {
   const { data, error } = await supabase
     .from('mesas')
     .select('*')
     .eq('numero', numero)
+    .eq('restaurante_id', restauranteId)
     .maybeSingle()
 
   if (error || !data) return null
   return data as Mesa
 }
 
+/** Mesa demo para /mesa/[numero] (restaurante mi-restaurante) */
+export async function getMesaDemo(numero: number): Promise<{
+  mesa: Mesa
+  restaurante: Restaurante
+} | null> {
+  const restaurante = await getRestaurantePorSlug(RESTAURANTE_DEMO_SLUG)
+  if (!restaurante) return null
+  const mesa = await getMesaPorNumero(numero, restaurante.id)
+  if (!mesa) return null
+  return { mesa, restaurante }
+}
+
 export type MutacionMenuResult =
   | { ok: true; item: MenuItem }
   | { ok: false; error: string }
 
-/** Todos los ítems del menú (incluye no disponibles) */
-export async function getMenuItems(): Promise<MenuItem[]> {
-  const { data, error } = await supabase
-    .from('menu_items')
-    .select('*')
-    .order('categoria')
-    .order('nombre')
+/** Todos los ítems del menú de un restaurante */
+export async function getMenuItems(restauranteId?: string): Promise<MenuItem[]> {
+  let query = supabase.from('menu_items').select('*').order('categoria').order('nombre')
+
+  if (restauranteId) {
+    query = query.eq('restaurante_id', restauranteId)
+  }
+
+  const { data, error } = await query
 
   if (error || !data) return []
   return data as MenuItem[]
 }
 
 /** Menú disponible ordenado por categoría */
-export async function getMenuDisponible(): Promise<MenuItem[]> {
-  const items = await getMenuItems()
-  return items.filter((i) => i.disponible)
+export async function getMenuDisponible(restauranteId: string): Promise<MenuItem[]> {
+  const { data, error } = await supabase
+    .from('menu_items')
+    .select('*')
+    .eq('restaurante_id', restauranteId)
+    .eq('disponible', true)
+    .order('categoria')
+
+  if (error || !data) return []
+  return data as MenuItem[]
 }
 
 /** Activa o desactiva un ítem del menú */
@@ -124,9 +165,23 @@ export async function crearPedido(
     return { ok: false, error: 'El carrito está vacío' }
   }
 
+  const { data: mesa } = await supabase
+    .from('mesas')
+    .select('restaurante_id')
+    .eq('id', mesaId)
+    .single()
+
+  if (!mesa?.restaurante_id) {
+    return { ok: false, error: 'Mesa no encontrada' }
+  }
+
   const { data: pedido, error: pedidoError } = await supabase
     .from('pedidos')
-    .insert({ mesa_id: mesaId, estado: 'pendiente' })
+    .insert({
+      mesa_id: mesaId,
+      restaurante_id: mesa.restaurante_id,
+      estado: 'pendiente',
+    })
     .select('id')
     .single()
 
@@ -203,12 +258,18 @@ function normalizarPedido(raw: PedidoActivoRaw): PedidoActivo {
 }
 
 /** Pedidos no entregados con ítems y número de mesa */
-export async function getPedidosActivos(): Promise<PedidoActivo[]> {
-  const { data, error } = await supabase
+export async function getPedidosActivos(restauranteId?: string): Promise<PedidoActivo[]> {
+  let query = supabase
     .from('pedidos')
     .select(PEDIDO_ACTIVO_SELECT)
     .neq('estado', 'entregado')
     .order('created_at', { ascending: true })
+
+  if (restauranteId) {
+    query = query.eq('restaurante_id', restauranteId)
+  }
+
+  const { data, error } = await query
 
   if (error || !data) return []
   return (data as PedidoActivoRaw[]).map(normalizarPedido)
@@ -282,8 +343,43 @@ function platoMasFrecuente(conteo: Map<string, number>): string | null {
 }
 
 /** Resumen del día para el panel del dueño */
-export async function getResumenAdmin(): Promise<ResumenAdmin> {
+export async function getResumenAdmin(
+  restauranteId?: string,
+  client?: SupabaseClient
+): Promise<ResumenAdmin> {
   const { inicio, fin } = rangoHoy()
+  const database = db(client)
+
+  let pedidosEntregadosQuery = database
+    .from('pedidos')
+    .select('pedido_items ( cantidad, menu_items ( nombre, precio ) )')
+    .eq('estado', 'entregado')
+    .gte('created_at', inicio)
+    .lte('created_at', fin)
+
+  let pedidosHoyQuery = database
+    .from('pedidos')
+    .select('*', { count: 'exact', head: true })
+    .gte('created_at', inicio)
+    .lte('created_at', fin)
+
+  let mesasOcupadasQuery = database
+    .from('mesas')
+    .select('*', { count: 'exact', head: true })
+    .neq('estado', 'libre')
+
+  let pedidosHoyListaQuery = database
+    .from('pedidos')
+    .select('id, pedido_items ( cantidad, menu_items ( nombre, precio ) )')
+    .gte('created_at', inicio)
+    .lte('created_at', fin)
+
+  if (restauranteId) {
+    pedidosEntregadosQuery = pedidosEntregadosQuery.eq('restaurante_id', restauranteId)
+    pedidosHoyQuery = pedidosHoyQuery.eq('restaurante_id', restauranteId)
+    mesasOcupadasQuery = mesasOcupadasQuery.eq('restaurante_id', restauranteId)
+    pedidosHoyListaQuery = pedidosHoyListaQuery.eq('restaurante_id', restauranteId)
+  }
 
   const [
     { data: pedidosEntregados },
@@ -291,26 +387,10 @@ export async function getResumenAdmin(): Promise<ResumenAdmin> {
     { count: mesasOcupadas },
     { data: pedidosHoyLista },
   ] = await Promise.all([
-    supabase
-      .from('pedidos')
-      .select('pedido_items ( cantidad, menu_items ( nombre, precio ) )')
-      .eq('estado', 'entregado')
-      .gte('created_at', inicio)
-      .lte('created_at', fin),
-    supabase
-      .from('pedidos')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', inicio)
-      .lte('created_at', fin),
-    supabase
-      .from('mesas')
-      .select('*', { count: 'exact', head: true })
-      .neq('estado', 'libre'),
-    supabase
-      .from('pedidos')
-      .select('id, pedido_items ( cantidad, menu_items ( nombre, precio ) )')
-      .gte('created_at', inicio)
-      .lte('created_at', fin),
+    pedidosEntregadosQuery,
+    pedidosHoyQuery,
+    mesasOcupadasQuery,
+    pedidosHoyListaQuery,
   ])
 
   let ventasDelDia = 0
@@ -377,12 +457,22 @@ const PEDIDO_RESUMEN_SELECT = `
 `
 
 /** Últimos pedidos con detalle para la tabla del admin */
-export async function getUltimosPedidos(limit: number): Promise<PedidoResumen[]> {
-  const { data, error } = await supabase
+export async function getUltimosPedidos(
+  limit: number,
+  restauranteId?: string,
+  client?: SupabaseClient
+): Promise<PedidoResumen[]> {
+  let query = db(client)
     .from('pedidos')
     .select(PEDIDO_RESUMEN_SELECT)
     .order('created_at', { ascending: false })
     .limit(limit)
+
+  if (restauranteId) {
+    query = query.eq('restaurante_id', restauranteId)
+  }
+
+  const { data, error } = await query
 
   if (error || !data) return []
   return (data as PedidoResumenRaw[]).map(normalizarPedidoResumen)

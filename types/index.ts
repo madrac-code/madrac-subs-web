@@ -1,3 +1,23 @@
+export type RolPerfil = 'admin' | 'cocinero' | 'mozo'
+
+export interface Restaurante {
+  id: string
+  nombre: string
+  slug: string
+  logo_url: string | null
+  color_primario: string
+  owner_id: string | null
+  created_at: string
+}
+
+export interface Perfil {
+  id: string
+  user_id: string
+  restaurante_id: string
+  rol: RolPerfil
+  created_at: string
+}
+
 export type EstadoMesa = 'libre' | 'ocupada' | 'esperando'
 
 export type EstadoPedido = 'pendiente' | 'en_cocina' | 'listo' | 'entregado'
@@ -6,6 +26,7 @@ export interface Mesa {
   id: string
   numero: number
   estado: EstadoMesa
+  restaurante_id: string
   created_at: string
 }
 
@@ -16,6 +37,7 @@ export interface MenuItem {
   precio: number
   categoria: string
   disponible: boolean
+  restaurante_id: string
   created_at: string
 }
 
@@ -32,6 +54,7 @@ export interface MenuItemInput {
 export interface Pedido {
   id: string
   mesa_id: string
+  restaurante_id: string
   estado: EstadoPedido
   created_at: string
 }

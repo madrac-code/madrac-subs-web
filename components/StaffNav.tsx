@@ -1,8 +1,9 @@
 import Link from 'next/link'
 
 const LINKS = [
+  { href: '/dashboard', label: 'Dashboard' },
   { href: '/cocina', label: 'Cocina' },
-  { href: '/admin', label: 'Admin' },
+  { href: '/admin/menu', label: 'Menú' },
 ] as const
 
 export function StaffNav() {

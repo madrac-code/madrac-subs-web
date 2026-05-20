@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { MesaCliente } from '@/components/MesaCliente'
-import { getMesaPorNumero, getMenuDisponible } from '@/lib/supabase'
+import { getMesaDemo, getMenuDisponible } from '@/lib/supabase'
 
 interface MesaPageProps {
   params: Promise<{ numero: string }>
@@ -14,12 +14,13 @@ export default async function MesaPage({ params }: MesaPageProps) {
     notFound()
   }
 
-  const mesa = await getMesaPorNumero(numeroMesa)
-  if (!mesa) {
+  const demo = await getMesaDemo(numeroMesa)
+  if (!demo) {
     notFound()
   }
 
-  const menuItems = await getMenuDisponible()
+  const { mesa } = demo
+  const menuItems = await getMenuDisponible(demo.restaurante.id)
 
   return <MesaCliente mesa={mesa} menuItems={menuItems} />
 }
