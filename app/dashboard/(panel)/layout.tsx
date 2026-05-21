@@ -1,13 +1,15 @@
 import { StaffNav } from '@/components/StaffNav'
+import { requireRestaurante } from '@/lib/auth-server'
 
-export default function DashboardPanelLayout({
+export default async function DashboardPanelLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const { restaurante } = await requireRestaurante()
   return (
     <>
-      <StaffNav />
+      <StaffNav slug={restaurante.slug} />
       {children}
     </>
   )

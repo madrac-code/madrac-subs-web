@@ -9,12 +9,12 @@ export function StaffNav({ slug }: StaffNavProps) {
     ? [
         { href: '/dashboard', label: 'Dashboard' },
         { href: `/${slug}/cocina`, label: 'Cocina' },
-        { href: '/admin/menu', label: 'Menú' },
+        { href: '/dashboard/menu', label: 'Menú' },
       ]
     : [
         { href: '/dashboard', label: 'Dashboard' },
         { href: '/cocina', label: 'Cocina' },
-        { href: '/admin/menu', label: 'Menú' },
+        { href: '/dashboard/menu', label: 'Menú' },
       ]
 
   return (

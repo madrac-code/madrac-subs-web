@@ -73,7 +73,7 @@ export function DashboardPanel({
             Gestionar mesas
           </Link>
           <Link
-            href="/admin/menu"
+            href="/dashboard/menu"
             className="inline-flex justify-center px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-sm font-semibold"
           >
             Gestionar menú
