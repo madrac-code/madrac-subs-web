@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { RESTAURANTE_DEMO_SLUG } from '@/lib/constants'
+import { RESTAURANTE_DEMO_SLUG, TZ_NEGOCIO, TZ_OFFSET } from '@/lib/constants'
 import { resolverRestauranteDelUsuario } from '@/lib/restaurante-usuario'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import type {
@@ -419,12 +419,31 @@ export async function avanzarEstadoPedido(
   return { ok: true }
 }
 
-/** Inicio y fin del día local (para filtros de analytics) */
+/** Partes de fecha en la zona horaria del negocio */
+function fechaEnTz(date: Date): { y: number; m: number; d: number } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ_NEGOCIO,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+
+  const get = (type: string) =>
+    Number(parts.find((p) => p.type === type)?.value ?? 0)
+
+  return { y: get('year'), m: get('month'), d: get('day') }
+}
+
+/** Inicio y fin del día en Argentina (UTC-3), como ISO UTC para filtros Supabase */
 function rangoHoy(): { inicio: string; fin: string } {
-  const now = new Date()
-  const inicio = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const fin = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
-  return { inicio: inicio.toISOString(), fin: fin.toISOString() }
+  const { y, m, d } = fechaEnTz(new Date())
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const fecha = `${y}-${pad(m)}-${pad(d)}`
+
+  return {
+    inicio: new Date(`${fecha}T00:00:00${TZ_OFFSET}`).toISOString(),
+    fin: new Date(`${fecha}T23:59:59.999${TZ_OFFSET}`).toISOString(),
+  }
 }
 
 type PedidoItemConPrecioRaw = {
