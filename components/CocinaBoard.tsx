@@ -33,14 +33,16 @@ export function CocinaBoard({ restauranteId, restauranteNombre }: CocinaBoardPro
   const [avanzandoId, setAvanzandoId] = useState<string | null>(null)
 
   const cargarPedidos = useCallback(async () => {
+    setCargando(true)
     const data = await getPedidosActivos(restauranteId)
     setPedidos(data)
     setCargando(false)
   }, [restauranteId])
 
   useEffect(() => {
-    setCargando(true)
-    cargarPedidos()
+    const id = window.setTimeout(() => {
+      void cargarPedidos()
+    }, 0)
 
     const channel = supabase
       .channel(`cocina-pedidos-${restauranteId}`)
@@ -59,6 +61,7 @@ export function CocinaBoard({ restauranteId, restauranteNombre }: CocinaBoardPro
       .subscribe()
 
     return () => {
+      window.clearTimeout(id)
       supabase.removeChannel(channel)
     }
   }, [restauranteId, cargarPedidos])

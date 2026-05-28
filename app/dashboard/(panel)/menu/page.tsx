@@ -3,40 +3,8 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { MenuItemForm, type MenuItemFormValues } from '@/components/MenuItemForm'
-import { createBrowserClient } from '@supabase/ssr'
+import { supabase, getMenuItems, getRestauranteActual } from '@/lib/supabase'
 import type { MenuItem } from '@/types'
-
-function getSupabase() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-}
-
-async function getRestauranteActual() {
-  const supabase = getSupabase()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const { data } = await supabase
-    .from('perfiles')
-    .select('restaurante_id, restaurantes(id, nombre, slug)')
-    .eq('user_id', user.id)
-    .single()
-  if (!data) return null
-  const r = data.restaurantes as { id: string; nombre: string; slug: string }
-  return Array.isArray(r) ? r[0] : r
-}
-
-async function getMenuItemsDelRestaurante(restauranteId: string): Promise<MenuItem[]> {
-  const supabase = getSupabase()
-  const { data } = await supabase
-    .from('menu_items')
-    .select('*')
-    .eq('restaurante_id', restauranteId)
-    .order('categoria')
-    .order('nombre')
-  return (data ?? []) as MenuItem[]
-}
 
 export default function DashboardMenuPage() {
   const [restauranteId, setRestauranteId] = useState<string | null>(null)
@@ -54,7 +22,7 @@ export default function DashboardMenuPage() {
   )
 
   const cargarItems = useCallback(async (restId: string) => {
-    const data = await getMenuItemsDelRestaurante(restId)
+    const data = await getMenuItems(restId)
     setItems(data)
     setCargando(false)
   }, [])
@@ -83,7 +51,6 @@ export default function DashboardMenuPage() {
   }
 
   async function handleToggle(item: MenuItem) {
-    const supabase = getSupabase()
     setAccionId(item.id)
     const { data, error } = await supabase
       .from('menu_items')
@@ -98,7 +65,6 @@ export default function DashboardMenuPage() {
   }
 
   async function handleGuardar(item: MenuItem, values: MenuItemFormValues) {
-    const supabase = getSupabase()
     setAccionId(item.id)
     const { data, error } = await supabase
       .from('menu_items')
@@ -115,7 +81,6 @@ export default function DashboardMenuPage() {
 
   async function handleCrear(values: MenuItemFormValues) {
     if (!restauranteId) return
-    const supabase = getSupabase()
     setGuardandoNuevo(true)
     const { data, error } = await supabase
       .from('menu_items')
@@ -131,7 +96,6 @@ export default function DashboardMenuPage() {
 
   async function handleEliminar(item: MenuItem) {
     if (!window.confirm(`¿Eliminar "${item.nombre}"?`)) return
-    const supabase = getSupabase()
     setAccionId(item.id)
     const { error } = await supabase.from('menu_items').delete().eq('id', item.id)
     setAccionId(null)

@@ -183,14 +183,13 @@ export type MutacionMenuResult =
   | { ok: false; error: string }
 
 /** Todos los ítems del menú de un restaurante */
-export async function getMenuItems(restauranteId?: string): Promise<MenuItem[]> {
-  let query = supabase.from('menu_items').select('*').order('categoria').order('nombre')
-
-  if (restauranteId) {
-    query = query.eq('restaurante_id', restauranteId)
-  }
-
-  const { data, error } = await query
+export async function getMenuItems(restauranteId: string): Promise<MenuItem[]> {
+  const { data, error } = await supabase
+    .from('menu_items')
+    .select('*')
+    .eq('restaurante_id', restauranteId)
+    .order('categoria')
+    .order('nombre')
 
   if (error || !data) return []
   return data as MenuItem[]
@@ -251,9 +250,13 @@ export async function upsertMenuItem(item: MenuItemInput): Promise<MutacionMenuR
     return { ok: true, item: data as MenuItem }
   }
 
+  if (!item.restaurante_id) {
+    return { ok: false, error: 'restaurante_id requerido para crear ítem' }
+  }
+
   const { data, error } = await supabase
     .from('menu_items')
-    .insert(payload)
+    .insert({ ...payload, restaurante_id: item.restaurante_id })
     .select()
     .single()
 
@@ -460,42 +463,39 @@ function platoMasFrecuente(conteo: Map<string, number>): string | null {
 
 /** Resumen del día para el panel del dueño */
 export async function getResumenAdmin(
-  restauranteId?: string,
+  restauranteId: string,
   client?: SupabaseClient
 ): Promise<ResumenAdmin> {
   const { inicio, fin } = rangoHoy()
   const database = db(client)
 
-  let pedidosEntregadosQuery = database
+  const pedidosEntregadosQuery = database
     .from('pedidos')
     .select('pedido_items ( cantidad, menu_items ( nombre, precio ) )')
+    .eq('restaurante_id', restauranteId)
     .eq('estado', 'entregado')
     .gte('created_at', inicio)
     .lte('created_at', fin)
 
-  let pedidosHoyQuery = database
+  const pedidosHoyQuery = database
     .from('pedidos')
     .select('*', { count: 'exact', head: true })
+    .eq('restaurante_id', restauranteId)
     .gte('created_at', inicio)
     .lte('created_at', fin)
 
-  let mesasOcupadasQuery = database
+  const mesasOcupadasQuery = database
     .from('mesas')
     .select('*', { count: 'exact', head: true })
+    .eq('restaurante_id', restauranteId)
     .neq('estado', 'libre')
 
-  let pedidosHoyListaQuery = database
+  const pedidosHoyListaQuery = database
     .from('pedidos')
     .select('id, pedido_items ( cantidad, menu_items ( nombre, precio ) )')
+    .eq('restaurante_id', restauranteId)
     .gte('created_at', inicio)
     .lte('created_at', fin)
-
-  if (restauranteId) {
-    pedidosEntregadosQuery = pedidosEntregadosQuery.eq('restaurante_id', restauranteId)
-    pedidosHoyQuery = pedidosHoyQuery.eq('restaurante_id', restauranteId)
-    mesasOcupadasQuery = mesasOcupadasQuery.eq('restaurante_id', restauranteId)
-    pedidosHoyListaQuery = pedidosHoyListaQuery.eq('restaurante_id', restauranteId)
-  }
 
   const [
     { data: pedidosEntregados },
@@ -575,20 +575,15 @@ const PEDIDO_RESUMEN_SELECT = `
 /** Últimos pedidos con detalle para la tabla del admin */
 export async function getUltimosPedidos(
   limit: number,
-  restauranteId?: string,
+  restauranteId: string,
   client?: SupabaseClient
 ): Promise<PedidoResumen[]> {
-  let query = db(client)
+  const { data, error } = await db(client)
     .from('pedidos')
     .select(PEDIDO_RESUMEN_SELECT)
+    .eq('restaurante_id', restauranteId)
     .order('created_at', { ascending: false })
     .limit(limit)
-
-  if (restauranteId) {
-    query = query.eq('restaurante_id', restauranteId)
-  }
-
-  const { data, error } = await query
 
   if (error || !data) return []
   return (data as PedidoResumenRaw[]).map(normalizarPedidoResumen)

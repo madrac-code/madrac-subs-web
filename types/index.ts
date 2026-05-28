@@ -44,6 +44,8 @@ export interface MenuItem {
 /** Datos para crear o actualizar un ítem del menú */
 export interface MenuItemInput {
   id?: string
+  /** Obligatorio en INSERT (sin id) */
+  restaurante_id?: string
   nombre: string
   descripcion: string | null
   precio: number

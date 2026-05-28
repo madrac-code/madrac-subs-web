@@ -39,6 +39,7 @@ export default function MesasDashboardPage() {
   const [creando, setCreando] = useState(false)
 
   const cargarDatos = useCallback(async () => {
+    setCargando(true)
     const rest = await getRestauranteActual()
     if (!rest) {
       console.warn('[mesas] Sin restaurante para el usuario logueado')
@@ -57,7 +58,10 @@ export default function MesasDashboardPage() {
   }, [router])
 
   useEffect(() => {
-    cargarDatos()
+    const id = window.setTimeout(() => {
+      void cargarDatos()
+    }, 0)
+    return () => window.clearTimeout(id)
   }, [cargarDatos])
 
   function mostrarFeedback(tipo: 'ok' | 'error', texto: string) {
