@@ -8,11 +8,13 @@ export function StaffNav({ slug }: StaffNavProps) {
   const links = slug
     ? [
         { href: '/dashboard', label: 'Dashboard' },
+        { href: '/dashboard/caja', label: 'Caja' },
         { href: `/${slug}/cocina`, label: 'Cocina' },
         { href: '/dashboard/menu', label: 'Menú' },
       ]
     : [
         { href: '/dashboard', label: 'Dashboard' },
+        { href: '/dashboard/caja', label: 'Caja' },
         { href: '/cocina', label: 'Cocina' },
         { href: '/dashboard/menu', label: 'Menú' },
       ]

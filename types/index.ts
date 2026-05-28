@@ -28,6 +28,62 @@ export interface Mesa {
   estado: EstadoMesa
   restaurante_id: string
   created_at: string
+  ocupado_at: string | null
+  cerrado_at: string | null
+}
+
+export type MedioPago = 'efectivo' | 'tarjeta' | 'transferencia' | 'qr_pago'
+
+export const MEDIOS_PAGO: MedioPago[] = [
+  'efectivo',
+  'tarjeta',
+  'transferencia',
+  'qr_pago',
+]
+
+export const ETIQUETA_MEDIO_PAGO: Record<MedioPago, string> = {
+  efectivo: 'Efectivo',
+  tarjeta: 'Tarjeta',
+  transferencia: 'Transferencia',
+  qr_pago: 'QR Pago',
+}
+
+export interface Pago {
+  id: string
+  pedido_id: string
+  restaurante_id: string
+  mesa_id: string
+  monto: number
+  medio: MedioPago
+  created_at: string
+}
+
+export interface PagoConDetalle extends Pago {
+  mesaNumero: number
+  itemsResumen: string
+}
+
+export interface CierreCaja {
+  id: string
+  restaurante_id: string
+  fecha: string
+  total: number
+  detalle_json: Record<string, unknown>
+  created_at: string
+}
+
+export interface ResumenCaja {
+  totalVendido: number
+  porMedio: Record<MedioPago, number>
+  pagos: PagoConDetalle[]
+  cajaCerradaHoy: boolean
+}
+
+export interface MesaParaCobro {
+  mesaId: string
+  numeroMesa: number
+  pedidoId: string
+  total: number
 }
 
 export interface MenuItem {
@@ -103,6 +159,7 @@ export interface ResumenAdmin {
   pedidosHoy: number
   mesasOcupadas: number
   platoMasPedido: string | null
+  tiempoPromedioMesa: number | null
 }
 
 /** Pedido resumido para la tabla del admin */

@@ -5,6 +5,7 @@ import { crearPedido } from '@/lib/supabase'
 import type { CarritoItem, MenuItem, Mesa } from '@/types'
 import { MenuItemCard } from '@/components/MenuItemCard'
 import { CarritoBar } from '@/components/CarritoBar'
+import { SeguimientoPedido } from '@/components/SeguimientoPedido'
 
 interface MesaClienteProps {
   mesa: Mesa
@@ -85,25 +86,10 @@ export function MesaCliente({ mesa, menuItems, restauranteId }: MesaClienteProps
 
   if (pedidoEnviadoId) {
     return (
-      <main className="min-h-screen bg-zinc-950 text-white p-6 flex items-center justify-center">
-        <div className="max-w-md mx-auto text-center space-y-6">
-          <div className="text-6xl">✅</div>
-          <h1 className="text-2xl font-bold text-amber-400">¡Pedido enviado!</h1>
-          <p className="text-zinc-400">
-            Tu pedido fue recibido en cocina. Te avisamos cuando esté listo.
-          </p>
-          <p className="text-sm text-zinc-500">
-            Pedido #{pedidoEnviadoId.slice(0, 8)}
-          </p>
-          <button
-            type="button"
-            onClick={nuevoPedido}
-            className="w-full bg-zinc-800 hover:bg-zinc-700 font-semibold py-3 rounded-xl"
-          >
-            Hacer otro pedido
-          </button>
-        </div>
-      </main>
+      <SeguimientoPedido
+        pedidoId={pedidoEnviadoId}
+        onNuevoPedido={nuevoPedido}
+      />
     )
   }
 

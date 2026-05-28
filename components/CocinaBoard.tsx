@@ -1,13 +1,16 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { ModalCobro } from '@/components/ModalCobro'
 import { PedidoCocinaCard } from '@/components/PedidoCocinaCard'
 import {
   avanzarEstadoPedido,
+  getMesasPendientesCobro,
   getPedidosActivos,
+  registrarPago,
   supabase,
 } from '@/lib/supabase'
-import type { EstadoCocina, PedidoActivo } from '@/types'
+import type { EstadoCocina, MedioPago, MesaParaCobro, PedidoActivo } from '@/types'
 import { ESTADOS_COCINA } from '@/types'
 
 const TITULO_COLUMNA: Record<EstadoCocina, string> = {
@@ -29,19 +32,26 @@ interface CocinaBoardProps {
 
 export function CocinaBoard({ restauranteId, restauranteNombre }: CocinaBoardProps) {
   const [pedidos, setPedidos] = useState<PedidoActivo[]>([])
+  const [mesasParaCobro, setMesasParaCobro] = useState<MesaParaCobro[]>([])
   const [cargando, setCargando] = useState(true)
   const [avanzandoId, setAvanzandoId] = useState<string | null>(null)
+  const [mesaCobro, setMesaCobro] = useState<MesaParaCobro | null>(null)
+  const [procesandoCobro, setProcesandoCobro] = useState(false)
 
-  const cargarPedidos = useCallback(async () => {
+  const cargarDatos = useCallback(async () => {
     setCargando(true)
-    const data = await getPedidosActivos(restauranteId)
-    setPedidos(data)
+    const [activos, cobro] = await Promise.all([
+      getPedidosActivos(restauranteId),
+      getMesasPendientesCobro(restauranteId),
+    ])
+    setPedidos(activos)
+    setMesasParaCobro(cobro)
     setCargando(false)
   }, [restauranteId])
 
   useEffect(() => {
     const id = window.setTimeout(() => {
-      void cargarPedidos()
+      void cargarDatos()
     }, 0)
 
     const channel = supabase
@@ -55,7 +65,19 @@ export function CocinaBoard({ restauranteId, restauranteNombre }: CocinaBoardPro
           filter: `restaurante_id=eq.${restauranteId}`,
         },
         () => {
-          cargarPedidos()
+          void cargarDatos()
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'mesas',
+          filter: `restaurante_id=eq.${restauranteId}`,
+        },
+        () => {
+          void cargarDatos()
         }
       )
       .subscribe()
@@ -64,7 +86,7 @@ export function CocinaBoard({ restauranteId, restauranteNombre }: CocinaBoardPro
       window.clearTimeout(id)
       supabase.removeChannel(channel)
     }
-  }, [restauranteId, cargarPedidos])
+  }, [restauranteId, cargarDatos])
 
   async function handleAvanzar(pedido: PedidoActivo) {
     setAvanzandoId(pedido.id)
@@ -72,8 +94,40 @@ export function CocinaBoard({ restauranteId, restauranteNombre }: CocinaBoardPro
     setAvanzandoId(null)
 
     if (resultado.ok) {
-      await cargarPedidos()
+      await cargarDatos()
+
+      if (pedido.estado === 'listo') {
+        const cobro = await getMesasPendientesCobro(restauranteId)
+        const mesa = cobro.find((m) => m.mesaId === pedido.mesa_id)
+        if (mesa) {
+          setMesaCobro(mesa)
+        }
+      }
     }
+  }
+
+  async function handleConfirmarCobro(monto: number, medio: MedioPago) {
+    if (!mesaCobro) return
+    setProcesandoCobro(true)
+
+    const resultado = await registrarPago(
+      mesaCobro.pedidoId,
+      mesaCobro.mesaId,
+      restauranteId,
+      monto,
+      medio
+    )
+
+    setProcesandoCobro(false)
+
+    if (resultado.ok) {
+      setMesaCobro(null)
+      await cargarDatos()
+    }
+  }
+
+  function abrirCobroMesa(mesa: MesaParaCobro) {
+    setMesaCobro(mesa)
   }
 
   return (
@@ -84,6 +138,26 @@ export function CocinaBoard({ restauranteId, restauranteNombre }: CocinaBoardPro
           {restauranteNombre} · Pedidos en vivo
         </p>
       </header>
+
+      {mesasParaCobro.length > 0 && (
+        <section className="mb-6 space-y-2">
+          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide">
+            Pendientes de cobro
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {mesasParaCobro.map((mesa) => (
+              <button
+                key={mesa.mesaId}
+                type="button"
+                onClick={() => abrirCobroMesa(mesa)}
+                className="px-4 py-2 rounded-xl bg-green-950 border border-green-700 text-green-400 text-sm font-semibold hover:bg-green-900"
+              >
+                Mesa {mesa.numeroMesa} · ${mesa.total.toLocaleString('es-AR')} · Cobrar y cerrar
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {cargando ? (
         <p className="text-center text-zinc-500">Cargando pedidos…</p>
@@ -123,6 +197,16 @@ export function CocinaBoard({ restauranteId, restauranteNombre }: CocinaBoardPro
             )
           })}
         </div>
+      )}
+
+      {mesaCobro && (
+        <ModalCobro
+          numeroMesa={mesaCobro.numeroMesa}
+          total={mesaCobro.total}
+          procesando={procesandoCobro}
+          onConfirmar={handleConfirmarCobro}
+          onCancelar={() => setMesaCobro(null)}
+        />
       )}
     </main>
   )

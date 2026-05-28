@@ -73,6 +73,12 @@ export function DashboardPanel({
             Gestionar mesas
           </Link>
           <Link
+            href="/dashboard/caja"
+            className="inline-flex justify-center px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-sm font-semibold"
+          >
+            Caja
+          </Link>
+          <Link
             href="/dashboard/menu"
             className="inline-flex justify-center px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-sm font-semibold"
           >
@@ -82,7 +88,7 @@ export function DashboardPanel({
         </div>
       </header>
 
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-8">
+      <section className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 mb-8">
         <TarjetaResumen
           titulo="Ventas del día"
           valor={`$${resumen.ventasDelDia.toLocaleString('es-AR')}`}
@@ -100,6 +106,15 @@ export function DashboardPanel({
           titulo="Plato más pedido"
           valor={resumen.platoMasPedido ?? '—'}
           subtitulo="Hoy"
+        />
+        <TarjetaResumen
+          titulo="Tiempo promedio mesa"
+          valor={
+            resumen.tiempoPromedioMesa !== null
+              ? `${resumen.tiempoPromedioMesa} min`
+              : '—'
+          }
+          subtitulo="Mesas cerradas hoy"
         />
       </section>
 

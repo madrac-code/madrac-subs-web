@@ -5,12 +5,16 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import type {
   CarritoItem,
   EstadoPedido,
+  MedioPago,
   MenuItem,
   MenuItemInput,
   Mesa,
+  MesaParaCobro,
+  PagoConDetalle,
   PedidoActivo,
   PedidoResumen,
   ResumenAdmin,
+  ResumenCaja,
   Restaurante,
 } from '@/types'
 
@@ -326,7 +330,21 @@ export async function crearPedido(
     return { ok: false, error: itemsError.message }
   }
 
-  await supabase.from('mesas').update({ estado: 'ocupada' }).eq('id', mesaId)
+  const { data: mesaActual } = await supabase
+    .from('mesas')
+    .select('estado')
+    .eq('id', mesaId)
+    .single()
+
+  const mesaUpdate: { estado: string; ocupado_at?: string; cerrado_at?: null } = {
+    estado: 'ocupada',
+  }
+  if (mesaActual?.estado === 'libre') {
+    mesaUpdate.ocupado_at = new Date().toISOString()
+    mesaUpdate.cerrado_at = null
+  }
+
+  await supabase.from('mesas').update(mesaUpdate).eq('id', mesaId)
 
   return { ok: true, pedidoId: pedido.id }
 }
@@ -434,6 +452,13 @@ function fechaEnTz(date: Date): { y: number; m: number; d: number } {
   return { y: get('year'), m: get('month'), d: get('day') }
 }
 
+/** Fecha calendario de hoy en Argentina (YYYY-MM-DD) */
+export function fechaHoyNegocio(): string {
+  const { y, m, d } = fechaEnTz(new Date())
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${y}-${pad(m)}-${pad(d)}`
+}
+
 /** Inicio y fin del día en Argentina (UTC-3), como ISO UTC para filtros Supabase */
 function rangoHoy(): { inicio: string; fin: string } {
   const { y, m, d } = fechaEnTz(new Date())
@@ -516,16 +541,26 @@ export async function getResumenAdmin(
     .gte('created_at', inicio)
     .lte('created_at', fin)
 
+  const mesasCerradasHoyQuery = database
+    .from('mesas')
+    .select('ocupado_at, cerrado_at')
+    .eq('restaurante_id', restauranteId)
+    .not('cerrado_at', 'is', null)
+    .gte('cerrado_at', inicio)
+    .lte('cerrado_at', fin)
+
   const [
     { data: pedidosEntregados },
     { count: pedidosHoy },
     { count: mesasOcupadas },
     { data: pedidosHoyLista },
+    { data: mesasCerradasHoy },
   ] = await Promise.all([
     pedidosEntregadosQuery,
     pedidosHoyQuery,
     mesasOcupadasQuery,
     pedidosHoyListaQuery,
+    mesasCerradasHoyQuery,
   ])
 
   let ventasDelDia = 0
@@ -544,11 +579,28 @@ export async function getResumenAdmin(
     }
   }
 
+  let tiempoPromedioMesa: number | null = null
+  const duraciones: number[] = []
+  for (const mesa of mesasCerradasHoy ?? []) {
+    if (!mesa.ocupado_at || !mesa.cerrado_at) continue
+    const inicioMs = new Date(mesa.ocupado_at).getTime()
+    const finMs = new Date(mesa.cerrado_at).getTime()
+    if (finMs > inicioMs) {
+      duraciones.push((finMs - inicioMs) / 60_000)
+    }
+  }
+  if (duraciones.length > 0) {
+    tiempoPromedioMesa = Math.round(
+      duraciones.reduce((a, b) => a + b, 0) / duraciones.length
+    )
+  }
+
   return {
     ventasDelDia,
     pedidosHoy: pedidosHoy ?? 0,
     mesasOcupadas: mesasOcupadas ?? 0,
     platoMasPedido: platoMasFrecuente(conteoPlatos),
+    tiempoPromedioMesa,
   }
 }
 
@@ -606,4 +658,351 @@ export async function getUltimosPedidos(
 
   if (error || !data) return []
   return (data as PedidoResumenRaw[]).map(normalizarPedidoResumen)
+}
+
+const PEDIDO_ESTADO_SELECT = `
+  id,
+  mesa_id,
+  estado,
+  created_at
+`
+
+/** Pedido por id (seguimiento cliente) */
+export async function getPedidoPorId(pedidoId: string): Promise<{
+  id: string
+  estado: EstadoPedido
+  created_at: string
+} | null> {
+  const { data, error } = await supabase
+    .from('pedidos')
+    .select(PEDIDO_ESTADO_SELECT)
+    .eq('id', pedidoId)
+    .maybeSingle()
+
+  if (error || !data) return null
+  return {
+    id: data.id,
+    estado: data.estado as EstadoPedido,
+    created_at: data.created_at,
+  }
+}
+
+type PedidoSesionRaw = {
+  id: string
+  estado: string
+  pedido_items: PedidoItemConPrecioRaw[]
+}
+
+/** Total de pedidos de la sesión actual de una mesa ocupada */
+async function totalSesionMesa(
+  mesaId: string,
+  restauranteId: string,
+  ocupadoAt: string | null
+): Promise<{ total: number; pedidoId: string | null; todosEntregados: boolean }> {
+  let query = db()
+    .from('pedidos')
+    .select('id, estado, pedido_items ( cantidad, menu_items ( nombre, precio ) )')
+    .eq('mesa_id', mesaId)
+    .eq('restaurante_id', restauranteId)
+    .order('created_at', { ascending: true })
+
+  if (ocupadoAt) {
+    query = query.gte('created_at', ocupadoAt)
+  }
+
+  const { data, error } = await query
+
+  if (error || !data || data.length === 0) {
+    return { total: 0, pedidoId: null, todosEntregados: false }
+  }
+
+  const pedidos = data as PedidoSesionRaw[]
+  let total = 0
+  let todosEntregados = true
+
+  for (const pedido of pedidos) {
+    if (pedido.estado !== 'entregado') todosEntregados = false
+    total += calcularTotalItems(pedido.pedido_items ?? [])
+  }
+
+  return {
+    total,
+    pedidoId: pedidos[pedidos.length - 1]?.id ?? null,
+    todosEntregados,
+  }
+}
+
+/** Mesas ocupadas con todos los pedidos entregados (pendientes de cobro) */
+export async function getMesasPendientesCobro(
+  restauranteId: string
+): Promise<MesaParaCobro[]> {
+  const { data: mesas, error } = await supabase
+    .from('mesas')
+    .select('id, numero, ocupado_at')
+    .eq('restaurante_id', restauranteId)
+    .eq('estado', 'ocupada')
+
+  if (error || !mesas) return []
+
+  const resultados: MesaParaCobro[] = []
+
+  for (const mesa of mesas) {
+    const { total, pedidoId, todosEntregados } = await totalSesionMesa(
+      mesa.id,
+      restauranteId,
+      mesa.ocupado_at
+    )
+    if (todosEntregados && pedidoId && total > 0) {
+      resultados.push({
+        mesaId: mesa.id,
+        numeroMesa: mesa.numero,
+        pedidoId,
+        total,
+      })
+    }
+  }
+
+  return resultados
+}
+
+export type CerrarMesaResult =
+  | { ok: true; mesa: Mesa }
+  | { ok: false; error: string }
+
+/** Cierra mesa si todos los pedidos de la sesión están entregados */
+export async function cerrarMesa(
+  mesaId: string,
+  restauranteId: string
+): Promise<CerrarMesaResult> {
+  const { data: mesa, error: mesaError } = await supabase
+    .from('mesas')
+    .select('*')
+    .eq('id', mesaId)
+    .eq('restaurante_id', restauranteId)
+    .single()
+
+  if (mesaError || !mesa) {
+    return { ok: false, error: 'Mesa no encontrada' }
+  }
+
+  if (mesa.estado !== 'ocupada') {
+    return { ok: false, error: 'La mesa no está ocupada' }
+  }
+
+  const { todosEntregados } = await totalSesionMesa(
+    mesaId,
+    restauranteId,
+    mesa.ocupado_at
+  )
+
+  if (!todosEntregados) {
+    return { ok: false, error: 'Hay pedidos sin entregar' }
+  }
+
+  const ahora = new Date().toISOString()
+  const { data: actualizada, error: updateError } = await supabase
+    .from('mesas')
+    .update({ estado: 'libre', cerrado_at: ahora })
+    .eq('id', mesaId)
+    .select()
+    .single()
+
+  if (updateError || !actualizada) {
+    return { ok: false, error: updateError?.message ?? 'No se pudo cerrar la mesa' }
+  }
+
+  return { ok: true, mesa: actualizada as Mesa }
+}
+
+export type RegistrarPagoResult =
+  | { ok: true; pagoId: string }
+  | { ok: false; error: string }
+
+/** Registra un pago y cierra la mesa */
+export async function registrarPago(
+  pedidoId: string,
+  mesaId: string,
+  restauranteId: string,
+  monto: number,
+  medio: MedioPago
+): Promise<RegistrarPagoResult> {
+  if (monto <= 0) {
+    return { ok: false, error: 'El monto debe ser mayor a cero' }
+  }
+
+  const { data: pago, error: pagoError } = await supabase
+    .from('pagos')
+    .insert({
+      pedido_id: pedidoId,
+      mesa_id: mesaId,
+      restaurante_id: restauranteId,
+      monto,
+      medio,
+    })
+    .select('id')
+    .single()
+
+  if (pagoError || !pago) {
+    return { ok: false, error: pagoError?.message ?? 'No se pudo registrar el pago' }
+  }
+
+  const cierre = await cerrarMesa(mesaId, restauranteId)
+  if (!cierre.ok) {
+    return { ok: false, error: cierre.error }
+  }
+
+  return { ok: true, pagoId: pago.id }
+}
+
+type PagoDelDiaRaw = {
+  id: string
+  pedido_id: string
+  mesa_id: string
+  restaurante_id: string
+  monto: number
+  medio: string
+  created_at: string
+  mesas: { numero: number } | { numero: number }[] | null
+  pedidos: {
+    pedido_items: {
+      cantidad: number
+      menu_items: { nombre: string } | { nombre: string }[] | null
+    }[]
+  } | {
+    pedido_items: {
+      cantidad: number
+      menu_items: { nombre: string } | { nombre: string }[] | null
+    }[]
+  }[] | null
+}
+
+function normalizarPagoDelDia(raw: PagoDelDiaRaw): PagoConDetalle {
+  const pedido = unwrapRelation(raw.pedidos)
+  const items = pedido?.pedido_items ?? []
+  const itemsResumen = items
+    .map((item) => {
+      const menu = unwrapRelation(item.menu_items)
+      return `${item.cantidad}× ${menu?.nombre ?? 'Ítem'}`
+    })
+    .join(', ')
+
+  return {
+    id: raw.id,
+    pedido_id: raw.pedido_id,
+    mesa_id: raw.mesa_id,
+    restaurante_id: raw.restaurante_id,
+    monto: raw.monto,
+    medio: raw.medio as MedioPago,
+    created_at: raw.created_at,
+    mesaNumero: unwrapRelation(raw.mesas)?.numero ?? 0,
+    itemsResumen: itemsResumen || '—',
+  }
+}
+
+const PAGO_DEL_DIA_SELECT = `
+  id,
+  pedido_id,
+  mesa_id,
+  restaurante_id,
+  monto,
+  medio,
+  created_at,
+  mesas ( numero ),
+  pedidos (
+    pedido_items (
+      cantidad,
+      menu_items ( nombre )
+    )
+  )
+`
+
+/** Resumen de caja del día */
+export async function getResumenCaja(
+  restauranteId: string,
+  client?: SupabaseClient
+): Promise<ResumenCaja> {
+  const { inicio, fin } = rangoHoy()
+  const database = db(client)
+  const fecha = fechaHoyNegocio()
+
+  const pagosQuery = database
+    .from('pagos')
+    .select(PAGO_DEL_DIA_SELECT)
+    .eq('restaurante_id', restauranteId)
+    .gte('created_at', inicio)
+    .lte('created_at', fin)
+    .order('created_at', { ascending: false })
+
+  const cierreQuery = database
+    .from('cierres_caja')
+    .select('id')
+    .eq('restaurante_id', restauranteId)
+    .eq('fecha', fecha)
+    .maybeSingle()
+
+  const [{ data: pagosRaw }, { data: cierre }] = await Promise.all([
+    pagosQuery,
+    cierreQuery,
+  ])
+
+  const pagos = ((pagosRaw ?? []) as PagoDelDiaRaw[]).map(normalizarPagoDelDia)
+  const porMedio: Record<MedioPago, number> = {
+    efectivo: 0,
+    tarjeta: 0,
+    transferencia: 0,
+    qr_pago: 0,
+  }
+
+  let totalVendido = 0
+  for (const pago of pagos) {
+    totalVendido += pago.monto
+    porMedio[pago.medio] += pago.monto
+  }
+
+  return {
+    totalVendido,
+    porMedio,
+    pagos,
+    cajaCerradaHoy: cierre !== null,
+  }
+}
+
+export type CerrarCajaResult =
+  | { ok: true; cierreId: string }
+  | { ok: false; error: string }
+
+/** Genera cierre de caja del día */
+export async function cerrarCaja(
+  restauranteId: string,
+  client?: SupabaseClient
+): Promise<CerrarCajaResult> {
+  const resumen = await getResumenCaja(restauranteId, client)
+  const fecha = fechaHoyNegocio()
+
+  if (resumen.cajaCerradaHoy) {
+    return { ok: false, error: 'La caja de hoy ya fue cerrada' }
+  }
+
+  const detalle_json = {
+    total: resumen.totalVendido,
+    porMedio: resumen.porMedio,
+    cantidadPagos: resumen.pagos.length,
+  }
+
+  const { data, error } = await db(client)
+    .from('cierres_caja')
+    .insert({
+      restaurante_id: restauranteId,
+      fecha,
+      total: resumen.totalVendido,
+      detalle_json,
+    })
+    .select('id')
+    .single()
+
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? 'No se pudo cerrar la caja' }
+  }
+
+  return { ok: true, cierreId: data.id }
 }
