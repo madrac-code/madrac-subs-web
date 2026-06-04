@@ -9,9 +9,9 @@ export const APP_TAGLINE =
 export const APP_BASE_URL =
   process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
-/** URLs de descarga */
+/** URLs de descarga (repositorio público de binarios) */
 export const DOWNLOAD_WINDOWS =
-  'https://github.com/madrac-code/madrac-subs/releases/download/v2%2C4Windows/MADRAC-SUBSv2.4.exe'
+  'https://github.com/LaSombraDeMadrac/madrac-subs-releases/releases/latest/download/Madrac-Subs.exe'
 
 export const DOWNLOAD_LINUX =
-  'https://github.com/madrac-code/madrac-subs/releases/download/MADRAC-SUBSv2.4/MADRAC-SUBS-venv-1.0-x86_64.AppImage'
+  'https://github.com/LaSombraDeMadrac/madrac-subs-releases/releases/latest/download/Madrac-Subs.AppImage'

@@ -3,9 +3,9 @@
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { APP_NAME, APP_TAGLINE, DOWNLOAD_WINDOWS, DOWNLOAD_LINUX } from '@/lib/constants'
 
-function logDownload(platform: string) {
+function handleDownload(platform: string) {
   const supabase = createBrowserSupabaseClient()
-  supabase.from('download_stats').insert({ platform }).then(({ error }) => {
+  supabase.from('download_stats').insert({ platform, source: 'lasombrademadrac' }).then(({ error }) => {
     if (error) console.warn('[tracking] Error registrando descarga:', error.message)
   })
 }
@@ -38,7 +38,7 @@ function Navbar() {
 
 function DownloadButton({ href, label, platform }: { href: string; label: string; platform: string }) {
   function handleClick() {
-    logDownload(platform)
+    handleDownload(platform)
     window.open(href, '_blank', 'noopener,noreferrer')
   }
 
@@ -73,8 +73,8 @@ export default function Home() {
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <DownloadButton href={DOWNLOAD_WINDOWS} platform="Windows" label="Descargar para Windows (.exe)" />
-            <DownloadButton href={DOWNLOAD_LINUX} platform="Linux" label="Descargar para Linux" />
+            <DownloadButton href={DOWNLOAD_WINDOWS} platform="Windows" label=".exe portable para Windows 579Mb" />
+            <DownloadButton href={DOWNLOAD_LINUX} platform="Linux" label=".appimage para Linux, alta compatibilidad 549Mb" />
           </div>
 
           <div className="mt-12 rounded-2xl border border-zinc-800 bg-zinc-900/50 aspect-video max-w-2xl mx-auto flex items-center justify-center">
