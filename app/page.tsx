@@ -1,14 +1,17 @@
 'use client'
 
-import { useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { APP_NAME, APP_TAGLINE, DOWNLOAD_WINDOWS, DOWNLOAD_LINUX } from '@/lib/constants'
 
-function Navbar() {
-  const [cargando, setCargando] = useState(false)
+function logDownload(platform: string) {
+  const supabase = createBrowserSupabaseClient()
+  supabase.from('download_stats').insert({ platform }).then(({ error }) => {
+    if (error) console.warn('[tracking] Error registrando descarga:', error.message)
+  })
+}
 
+function Navbar() {
   async function iniciarSesionGoogle() {
-    setCargando(true)
     const supabase = createBrowserSupabaseClient()
     const redirectTo = `${window.location.origin}/auth/callback`
     await supabase.auth.signInWithOAuth({
@@ -24,29 +27,32 @@ function Navbar() {
         <button
           type="button"
           onClick={iniciarSesionGoogle}
-          disabled={cargando}
-          className="text-sm text-zinc-400 hover:text-white transition-colors disabled:opacity-60"
+          className="text-sm text-zinc-400 hover:text-white transition-colors"
         >
-          {cargando ? '…' : 'Iniciar sesión'}
+          Iniciar sesión
         </button>
       </div>
     </nav>
   )
 }
 
-function DownloadButton({ href, label }: { href: string; label: string }) {
+function DownloadButton({ href, label, platform }: { href: string; label: string; platform: string }) {
+  function handleClick() {
+    logDownload(platform)
+    window.open(href, '_blank', 'noopener,noreferrer')
+  }
+
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
+    <button
+      type="button"
+      onClick={handleClick}
       className="inline-flex items-center gap-2 bg-white text-black font-semibold px-6 py-3 rounded-xl hover:bg-zinc-200 transition-colors"
     >
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
       {label}
-    </a>
+    </button>
   )
 }
 
@@ -67,8 +73,8 @@ export default function Home() {
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <DownloadButton href={DOWNLOAD_WINDOWS} label="Descargar para Windows (.exe)" />
-            <DownloadButton href={DOWNLOAD_LINUX} label="Descargar para Linux" />
+            <DownloadButton href={DOWNLOAD_WINDOWS} platform="Windows" label="Descargar para Windows (.exe)" />
+            <DownloadButton href={DOWNLOAD_LINUX} platform="Linux" label="Descargar para Linux" />
           </div>
 
           <div className="mt-12 rounded-2xl border border-zinc-800 bg-zinc-900/50 aspect-video max-w-2xl mx-auto flex items-center justify-center">
