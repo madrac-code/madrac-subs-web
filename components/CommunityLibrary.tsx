@@ -1,30 +1,37 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 
 type Subtitle = {
   id: string
   video_name: string
-  language: string
+  source_language: string | null
+  target_language: string
   srt_url: string
   uploader_name: string | null
   downloads: number
+  status: string
   created_at: string
 }
+
+type SortTab = 'recent' | 'popular'
 
 export function CommunityLibrary() {
   const [subtitles, setSubtitles] = useState<Subtitle[]>([])
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
+  const [sortBy, setSortBy] = useState<SortTab>('recent')
 
-  useEffect(() => {
+  const fetchSubtitles = useCallback(() => {
+    setLoading(true)
     const supabase = createBrowserSupabaseClient()
+    const orderColumn = sortBy === 'popular' ? 'downloads' : 'created_at'
 
     supabase
       .from('community_subtitles')
       .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false })
+      .order(orderColumn, { ascending: sortBy !== 'popular' })
       .limit(20)
       .then(({ data, error, count }) => {
         if (!error && data) {
@@ -33,7 +40,11 @@ export function CommunityLibrary() {
         }
         setLoading(false)
       })
-  }, [])
+  }, [sortBy])
+
+  useEffect(() => {
+    fetchSubtitles()
+  }, [fetchSubtitles])
 
   function formatDate(iso: string) {
     return new Date(iso).toLocaleDateString('es-ES', {
@@ -52,6 +63,31 @@ export function CommunityLibrary() {
         {!loading && (
           <span className="text-xs text-zinc-500">{total} subtítulos</span>
         )}
+      </div>
+
+      <div className="flex gap-1 mb-3 bg-zinc-800/50 rounded-lg p-0.5 w-fit">
+        <button
+          type="button"
+          onClick={() => setSortBy('recent')}
+          className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
+            sortBy === 'recent'
+              ? 'bg-zinc-700 text-white'
+              : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          Recientes
+        </button>
+        <button
+          type="button"
+          onClick={() => setSortBy('popular')}
+          className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
+            sortBy === 'popular'
+              ? 'bg-zinc-700 text-white'
+              : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          Más descargados
+        </button>
       </div>
 
       {loading ? (
@@ -74,13 +110,23 @@ export function CommunityLibrary() {
                   {sub.video_name}
                 </p>
                 <div className="flex items-center gap-2 text-xs text-zinc-500 mt-0.5">
-                  <span>{sub.language}</span>
+                  <span>
+                    {sub.source_language
+                      ? `${sub.source_language} → ${sub.target_language}`
+                      : sub.target_language}
+                  </span>
                   <span>•</span>
                   <span>{formatDate(sub.created_at)}</span>
                   {sub.downloads > 0 && (
                     <>
                       <span>•</span>
                       <span>{sub.downloads} descargas</span>
+                    </>
+                  )}
+                  {sub.status === 'pending' && (
+                    <>
+                      <span>•</span>
+                      <span className="text-amber-400">pendiente</span>
                     </>
                   )}
                 </div>
@@ -100,7 +146,6 @@ export function CommunityLibrary() {
           ))}
         </ul>
       )}
-
     </div>
   )
 }
