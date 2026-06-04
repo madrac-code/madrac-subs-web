@@ -11,7 +11,7 @@ export const APP_BASE_URL =
 
 /** URLs de descarga (repositorio público de binarios) */
 export const DOWNLOAD_WINDOWS =
-  'https://github.com/LaSombraDeMadrac/madrac-subs-releases/releases/latest/download/Madrac-Subs.exe'
+  'https://github.com/madrac-web/Madrac-Subs-Releases/releases/download/v2.04Windows/MADRAC-SUBSv2.4.exe'
 
 export const DOWNLOAD_LINUX =
-  'https://github.com/LaSombraDeMadrac/madrac-subs-releases/releases/latest/download/Madrac-Subs.AppImage'
+  'https://github.com/madrac-web/Madrac-Subs-Releases/releases/download/v2.04Linux/MADRAC-SUBSv2.04.AppImage'
