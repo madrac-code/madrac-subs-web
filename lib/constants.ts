@@ -1,15 +1,17 @@
-/** Slug del restaurante de demo para /mesa/[numero] sin auth */
-export const RESTAURANTE_DEMO_SLUG = 'mi-restaurante'
+/** Nombre de la aplicación */
+export const APP_NAME = 'MADRAC-SUBS'
 
-/** Zona horaria del negocio (Argentina, sin DST) */
-export const TZ_NEGOCIO = 'America/Argentina/Buenos_Aires'
-export const TZ_OFFSET = '-03:00'
+/** Descripción corta */
+export const APP_TAGLINE =
+  'Transcripción y Traducción Profesional de Video con Inteligencia Artificial'
 
-/** URL pública de la app (QR de mesas) */
+/** URL base de la app */
 export const APP_BASE_URL =
-  process.env.NEXT_PUBLIC_APP_URL ?? 'https://resto-app-silk.vercel.app'
+  process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
-/** URL del menú QR para una mesa */
-export function urlMesaQr(slug: string, numero: number): string {
-  return `${APP_BASE_URL}/${slug}/mesa/${numero}`
-}
+/** URLs de descarga (placeholders) */
+export const DOWNLOAD_WINDOWS =
+  'https://github.com/anomalyco/madrac-subs/releases/latest/download/madrac-subs-windows.exe'
+
+export const DOWNLOAD_LINUX =
+  'https://github.com/anomalyco/madrac-subs/releases/latest/download/madrac-subs-linux.AppImage'

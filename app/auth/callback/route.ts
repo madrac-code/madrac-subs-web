@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { usuarioTieneRestaurante } from '@/lib/auth-server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 export async function GET(request: Request) {
@@ -17,19 +16,5 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/login?error=auth`)
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return NextResponse.redirect(`${origin}/login?error=auth`)
-  }
-
-  const tieneRestaurante = await usuarioTieneRestaurante(user.id)
-
-  if (!tieneRestaurante) {
-    return NextResponse.redirect(`${origin}/onboarding`)
-  }
-
-  return NextResponse.redirect(`${origin}/dashboard`)
+  return NextResponse.redirect(`${origin}/`)
 }
