@@ -15,39 +15,39 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request })
 
-  const url = SUPABASE_URL!
-  const key = SUPABASE_ANON_KEY!
-
-  if (!url || !key) {
-    console.warn('[middleware] Supabase no configurado — saltando auth')
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     return response
   }
 
-  const supabase = createServerClient(url, key, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll()
+  try {
+    const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet: CookieToSet[]) {
+          cookiesToSet.forEach(({ name, value }: CookieToSet) => {
+            request.cookies.set(name, value)
+          })
+          response = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }: CookieToSet) => {
+            response.cookies.set(name, value, options)
+          })
+        },
       },
-      setAll(cookiesToSet: CookieToSet[]) {
-        cookiesToSet.forEach(({ name, value }: CookieToSet) => {
-          request.cookies.set(name, value)
-        })
-        response = NextResponse.next({ request })
-        cookiesToSet.forEach(({ name, value, options }: CookieToSet) => {
-          response.cookies.set(name, value, options)
-        })
-      },
-    },
-  })
+    })
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-  const { pathname } = request.nextUrl
+    const { pathname } = request.nextUrl
 
-  if (pathname === '/login' && user) {
-    return NextResponse.redirect(new URL('/', request.url))
+    if (pathname === '/login' && user) {
+      return NextResponse.redirect(new URL('/', request.url))
+    }
+  } catch (e) {
+    console.warn('[middleware] Error en auth Supabase:', e)
   }
 
   return response
