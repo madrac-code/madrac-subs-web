@@ -4,11 +4,9 @@ import { useEffect, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 
 type Profile = {
-  username: string | null
+  display_name: string | null
   honor_points: number
-  subtitles_uploaded: number
-  total_downloads_received: number
-  helpful_votes: number
+  subtitles_shared: number
 }
 
 const LEVELS = [
@@ -30,8 +28,8 @@ export function Leaderboard() {
   useEffect(() => {
     const supabase = createBrowserSupabaseClient()
     supabase
-      .from('community_profiles')
-      .select('username, honor_points, subtitles_uploaded, total_downloads_received, helpful_votes')
+      .from('profiles')
+      .select('display_name, honor_points, subtitles_shared')
       .order('honor_points', { ascending: false })
       .limit(20)
       .then(({ data, error }) => {
@@ -56,7 +54,7 @@ export function Leaderboard() {
             const level = reputationLevel(p.honor_points)
             return (
               <li
-                key={p.username ?? i}
+                key={p.display_name ?? i}
                 className="flex items-center gap-3 rounded-xl bg-zinc-800/30 px-3 py-2"
               >
                 <span className="w-5 text-center text-xs font-bold text-zinc-500 shrink-0">
@@ -64,25 +62,20 @@ export function Leaderboard() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm text-zinc-200 truncate font-medium">
-                    {p.username ?? 'Anónimo'}
+                    {p.display_name ?? 'Anónimo'}
                   </p>
                   <div className="flex items-center gap-2 text-xs text-zinc-500 mt-0.5">
                     <span className={level.color}>{level.label}</span>
                     <span>•</span>
                     <span>{p.honor_points} pts</span>
-                    {p.subtitles_uploaded > 0 && (
+                    {p.subtitles_shared > 0 && (
                       <>
                         <span>•</span>
-                        <span>{p.subtitles_uploaded} subidas</span>
+                        <span>{p.subtitles_shared} subidas</span>
                       </>
                     )}
                   </div>
                 </div>
-                {p.helpful_votes > 0 && (
-                  <span className="shrink-0 text-xs text-zinc-500">
-                    👍 {p.helpful_votes}
-                  </span>
-                )}
               </li>
             )
           })}

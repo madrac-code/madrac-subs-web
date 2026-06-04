@@ -9,6 +9,9 @@ export const APP_TAGLINE =
 export const APP_BASE_URL =
   process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
+/** URL del proyecto Supabase */
+export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+
 /** URLs de descarga (repositorio público de binarios) */
 export const DOWNLOAD_WINDOWS =
   'https://github.com/madrac-web/Madrac-Subs-Releases/releases/download/v2.04Windows/MADRAC-SUBSv2.4.exe'

@@ -2,22 +2,23 @@
 
 import { useEffect, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
+import { SUPABASE_URL } from '@/lib/constants'
 
-type Subtitle = {
+type DesktopSubtitle = {
   id: string
-  video_name: string
-  source_language: string | null
-  target_language: string
-  srt_url: string
-  uploader_name: string | null
-  uploaded_by: string | null
-  downloads: number
-  status: string
+  original_video_name: string
+  language: string
+  filename: string
+  download_count: number
+  duration_sec: number | null
+  version: number
+  avg_confidence: number | null
+  user_id: string | null
   created_at: string
 }
 
 type Profile = {
-  user_id: string
+  id: string
   honor_points: number
 }
 
@@ -35,8 +36,15 @@ function reputationLevel(points: number) {
   return LEVELS.find((l) => points >= l.min) ?? LEVELS[LEVELS.length - 1]
 }
 
+function formatDuration(sec: number | null) {
+  if (!sec) return null
+  const m = Math.floor(sec / 60)
+  const s = Math.floor(sec % 60)
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
 export function CommunityLibrary() {
-  const [subtitles, setSubtitles] = useState<Subtitle[]>([])
+  const [subtitles, setSubtitles] = useState<DesktopSubtitle[]>([])
   const [profiles, setProfiles] = useState<Map<string, Profile>>(new Map())
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
@@ -44,32 +52,33 @@ export function CommunityLibrary() {
 
   useEffect(() => {
     const supabase = createBrowserSupabaseClient()
-    const orderColumn = sortBy === 'popular' ? 'downloads' : 'created_at'
+    const orderColumn = sortBy === 'popular' ? 'download_count' : 'created_at'
 
     supabase
-      .from('community_subtitles')
-      .select('*', { count: 'exact' })
+      .from('subtitles')
+      .select('id, original_video_name, language, filename, download_count, duration_sec, version, avg_confidence, user_id, created_at', { count: 'exact' })
+      .eq('status', 'published')
       .order(orderColumn, { ascending: sortBy !== 'popular' })
       .limit(20)
       .then(({ data, error, count }) => {
         if (!error && data) {
-          setSubtitles(data as Subtitle[])
+          setSubtitles(data as DesktopSubtitle[])
           if (count !== null) setTotal(count)
 
           const userIds = data
-            .map((s) => (s as Subtitle).uploaded_by)
+            .map((s) => (s as DesktopSubtitle).user_id)
             .filter(Boolean) as string[]
 
           if (userIds.length > 0) {
             supabase
-              .from('community_profiles')
-              .select('user_id, honor_points')
-              .in('user_id', userIds)
+              .from('profiles')
+              .select('id, honor_points')
+              .in('id', userIds)
               .then(({ data: profilesData }) => {
                 if (profilesData) {
                   const map = new Map<string, Profile>()
                   for (const p of profilesData as Profile[]) {
-                    map.set(p.user_id, p)
+                    map.set(p.id, p)
                   }
                   setProfiles(map)
                 }
@@ -88,12 +97,15 @@ export function CommunityLibrary() {
     })
   }
 
-  function handleDownload(sub: Subtitle) {
+  function handleDownload(sub: DesktopSubtitle) {
     const supabase = createBrowserSupabaseClient()
-    supabase.rpc('increment_downloads', { subtitle_id: sub.id }).then(({ error }) => {
+    supabase.from('subtitle_downloads').insert({
+      subtitle_id: sub.id,
+    }).then(({ error }) => {
       if (error) console.warn('[downloads] error:', error.message)
     })
-    window.open(sub.srt_url, '_blank', 'noopener,noreferrer')
+    const url = `${SUPABASE_URL}/storage/v1/object/public/subtitle-files/${sub.filename}`
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   return (
@@ -143,8 +155,9 @@ export function CommunityLibrary() {
       ) : (
         <ul className="space-y-2 overflow-y-auto max-h-72 sm:max-h-80 scrollbar-thin">
           {subtitles.map((sub) => {
-            const profile = sub.uploaded_by ? profiles.get(sub.uploaded_by) : undefined
+            const profile = sub.user_id ? profiles.get(sub.user_id) : undefined
             const level = profile ? reputationLevel(profile.honor_points) : null
+            const duration = formatDuration(sub.duration_sec)
 
             return (
               <li
@@ -153,20 +166,22 @@ export function CommunityLibrary() {
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-sm text-zinc-200 truncate font-medium">
-                    {sub.video_name}
+                    {sub.original_video_name}
                   </p>
                   <div className="flex items-center gap-2 text-xs text-zinc-500 mt-0.5 flex-wrap">
-                    <span>
-                      {sub.source_language
-                        ? `${sub.source_language} → ${sub.target_language}`
-                        : sub.target_language}
-                    </span>
+                    <span>{sub.language}</span>
                     <span>•</span>
                     <span>{formatDate(sub.created_at)}</span>
-                    {sub.downloads > 0 && (
+                    {duration && (
                       <>
                         <span>•</span>
-                        <span>{sub.downloads} descargas</span>
+                        <span>{duration}</span>
+                      </>
+                    )}
+                    {sub.download_count > 0 && (
+                      <>
+                        <span>•</span>
+                        <span>{sub.download_count} descargas</span>
                       </>
                     )}
                     {level && (
