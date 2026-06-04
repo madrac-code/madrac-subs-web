@@ -3,6 +3,7 @@
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { APP_NAME, APP_TAGLINE, DOWNLOAD_WINDOWS, DOWNLOAD_LINUX } from '@/lib/constants'
 import { CommunityLibrary } from '@/components/CommunityLibrary'
+import { Leaderboard } from '@/components/Leaderboard'
 
 function handleDownload(platform: string) {
   const supabase = createBrowserSupabaseClient()
@@ -106,6 +107,10 @@ export default function Home() {
             </div>
             <CommunityLibrary />
           </div>
+        </div>
+
+        <div className="mt-8 sm:mt-12 max-w-md mx-auto">
+          <Leaderboard />
         </div>
 
         <footer className="mt-16 sm:mt-20 pb-6 sm:pb-8 text-center text-xs sm:text-sm text-zinc-600">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 
 type Subtitle = {
@@ -10,21 +10,39 @@ type Subtitle = {
   target_language: string
   srt_url: string
   uploader_name: string | null
+  uploaded_by: string | null
   downloads: number
   status: string
   created_at: string
 }
 
+type Profile = {
+  user_id: string
+  honor_points: number
+}
+
 type SortTab = 'recent' | 'popular'
+
+const LEVELS = [
+  { min: 1000, label: 'Leyenda MADRAC', color: 'text-red-400' },
+  { min: 500, label: 'Maestro de Subtítulos', color: 'text-orange-400' },
+  { min: 200, label: 'Colaborador', color: 'text-purple-400' },
+  { min: 50, label: 'Traductor', color: 'text-blue-400' },
+  { min: 0, label: 'Novato', color: 'text-zinc-400' },
+]
+
+function reputationLevel(points: number) {
+  return LEVELS.find((l) => points >= l.min) ?? LEVELS[LEVELS.length - 1]
+}
 
 export function CommunityLibrary() {
   const [subtitles, setSubtitles] = useState<Subtitle[]>([])
+  const [profiles, setProfiles] = useState<Map<string, Profile>>(new Map())
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
   const [sortBy, setSortBy] = useState<SortTab>('recent')
 
-  const fetchSubtitles = useCallback(() => {
-    setLoading(true)
+  useEffect(() => {
     const supabase = createBrowserSupabaseClient()
     const orderColumn = sortBy === 'popular' ? 'downloads' : 'created_at'
 
@@ -37,14 +55,30 @@ export function CommunityLibrary() {
         if (!error && data) {
           setSubtitles(data as Subtitle[])
           if (count !== null) setTotal(count)
+
+          const userIds = data
+            .map((s) => (s as Subtitle).uploaded_by)
+            .filter(Boolean) as string[]
+
+          if (userIds.length > 0) {
+            supabase
+              .from('community_profiles')
+              .select('user_id, honor_points')
+              .in('user_id', userIds)
+              .then(({ data: profilesData }) => {
+                if (profilesData) {
+                  const map = new Map<string, Profile>()
+                  for (const p of profilesData as Profile[]) {
+                    map.set(p.user_id, p)
+                  }
+                  setProfiles(map)
+                }
+              })
+          }
         }
         setLoading(false)
       })
   }, [sortBy])
-
-  useEffect(() => {
-    fetchSubtitles()
-  }, [fetchSubtitles])
 
   function formatDate(iso: string) {
     return new Date(iso).toLocaleDateString('es-ES', {
@@ -52,6 +86,14 @@ export function CommunityLibrary() {
       month: 'short',
       day: 'numeric',
     })
+  }
+
+  function handleDownload(sub: Subtitle) {
+    const supabase = createBrowserSupabaseClient()
+    supabase.rpc('increment_downloads', { subtitle_id: sub.id }).then(({ error }) => {
+      if (error) console.warn('[downloads] error:', error.message)
+    })
+    window.open(sub.srt_url, '_blank', 'noopener,noreferrer')
   }
 
   return (
@@ -100,50 +142,54 @@ export function CommunityLibrary() {
         </div>
       ) : (
         <ul className="space-y-2 overflow-y-auto max-h-72 sm:max-h-80 scrollbar-thin">
-          {subtitles.map((sub) => (
-            <li
-              key={sub.id}
-              className="flex items-center gap-3 rounded-xl bg-zinc-800/50 px-3 py-2.5"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-zinc-200 truncate font-medium">
-                  {sub.video_name}
-                </p>
-                <div className="flex items-center gap-2 text-xs text-zinc-500 mt-0.5">
-                  <span>
-                    {sub.source_language
-                      ? `${sub.source_language} → ${sub.target_language}`
-                      : sub.target_language}
-                  </span>
-                  <span>•</span>
-                  <span>{formatDate(sub.created_at)}</span>
-                  {sub.downloads > 0 && (
-                    <>
-                      <span>•</span>
-                      <span>{sub.downloads} descargas</span>
-                    </>
-                  )}
-                  {sub.status === 'pending' && (
-                    <>
-                      <span>•</span>
-                      <span className="text-amber-400">pendiente</span>
-                    </>
-                  )}
-                </div>
-              </div>
-              <a
-                href={sub.srt_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors"
+          {subtitles.map((sub) => {
+            const profile = sub.uploaded_by ? profiles.get(sub.uploaded_by) : undefined
+            const level = profile ? reputationLevel(profile.honor_points) : null
+
+            return (
+              <li
+                key={sub.id}
+                className="flex items-center gap-3 rounded-xl bg-zinc-800/50 px-3 py-2.5"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Descargar
-              </a>
-            </li>
-          ))}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-zinc-200 truncate font-medium">
+                    {sub.video_name}
+                  </p>
+                  <div className="flex items-center gap-2 text-xs text-zinc-500 mt-0.5 flex-wrap">
+                    <span>
+                      {sub.source_language
+                        ? `${sub.source_language} → ${sub.target_language}`
+                        : sub.target_language}
+                    </span>
+                    <span>•</span>
+                    <span>{formatDate(sub.created_at)}</span>
+                    {sub.downloads > 0 && (
+                      <>
+                        <span>•</span>
+                        <span>{sub.downloads} descargas</span>
+                      </>
+                    )}
+                    {level && (
+                      <>
+                        <span>•</span>
+                        <span className={level.color}>{level.label}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleDownload(sub)}
+                  className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Descargar
+                </button>
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>
