@@ -2,6 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 
 let lastFetch = 0
 
+async function fetchSubdivxId(uuid: string, token: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://subx-api.duckdns.org/api/subtitles/${uuid}/download`,
+      { method: 'HEAD', headers: { Authorization: `Bearer ${token}` } }
+    )
+    const disposition = res.headers.get('content-disposition') || ''
+    const match = disposition.match(/_(\d+)_.*\.rar$/)
+    return match ? match[1] : null
+  } catch {
+    return null
+  }
+}
+
 export async function GET(request: NextRequest) {
   const query = request.nextUrl.searchParams.get('query')
   const type = request.nextUrl.searchParams.get('type') || 'movie'
@@ -33,7 +47,19 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await res.json()
-    return NextResponse.json({ items: data.items || [] })
+    const items = data.items || []
+
+    const token = process.env.SUBX_API_TOKEN || ''
+    const ids = await Promise.all(
+      items.slice(0, 5).map((item: any) => fetchSubdivxId(item.id, token))
+    )
+
+    const enriched = items.slice(0, 5).map((item: any, i: number) => ({
+      ...item,
+      subdivx_id: ids[i],
+    }))
+
+    return NextResponse.json({ items: enriched })
   } catch {
     return NextResponse.json({ items: [] })
   } finally {

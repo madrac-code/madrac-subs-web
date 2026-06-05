@@ -98,9 +98,10 @@ function SearchInput() {
             setQuery(internalResults[selectedIdx].original_video_name)
           } else {
             const item = externalResults[selectedIdx - internalResults.length]
-            if (item?.id) {
+            const subId = item?.subdivx_id
+            if (subId) {
               window.open(
-                `https://www.subdivx.com/X6X${item.id}X`,
+                `https://www.subdivx.com/X6X${subId}X`,
                 '_blank',
                 'noopener,noreferrer'
               )
@@ -190,7 +191,7 @@ function SearchInput() {
                 return (
                   <a
                     key={item.id}
-                    href={`https://www.subdivx.com/X6X${item.id}X`}
+                    href={`https://www.subdivx.com/X6X${item.subdivx_id || item.id}X`}
                     target="_blank"
                     rel="noopener noreferrer"
                     onMouseEnter={() => setSelectedIdx(idx)}
