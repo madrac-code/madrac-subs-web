@@ -15,9 +15,12 @@ async function fetchNumericalId(uuid: string, token: string): Promise<string | n
     )
     const disposition = res.headers.get('content-disposition') || ''
     controller.abort()
+    console.log('HEADER COMPLETO:', disposition)
 
-    const match = disposition.match(/.*_(\d+)_\./)
-    return match ? match[1] : null
+    const match = disposition.match(/.*_(\d+)_/)
+    const id = match ? match[1] : null
+    console.log('ID EXTRAÍDO:', id)
+    return id && id.length >= 5 ? id : null
   } catch {
     return null
   }
