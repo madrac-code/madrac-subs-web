@@ -44,17 +44,18 @@ export function useLatestRelease() {
 
         let windowsUrl = FALLBACK_WINDOWS
         let linuxUrl = FALLBACK_LINUX
+        const nameLower = (s: string) => s.toLowerCase()
 
         for (const release of releases) {
           for (const asset of release.assets) {
-            if (asset.name.endsWith('.exe') && windowsUrl === FALLBACK_WINDOWS) {
+            const name = nameLower(asset.name)
+            if (windowsUrl === FALLBACK_WINDOWS && name.endsWith('.exe')) {
               windowsUrl = asset.browser_download_url
             }
-            if (asset.name.endsWith('.AppImage') && linuxUrl === FALLBACK_LINUX) {
+            if (linuxUrl === FALLBACK_LINUX && (name.endsWith('.appimage') || name.endsWith('.zip'))) {
               linuxUrl = asset.browser_download_url
             }
           }
-          if (windowsUrl !== FALLBACK_WINDOWS && linuxUrl !== FALLBACK_LINUX) break
         }
 
         if (!cancelled) {
