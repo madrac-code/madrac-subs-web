@@ -101,7 +101,7 @@ function SearchInput() {
             const numId = item?.numerical_id
             if (numId) {
               window.open(
-                `https://www.subdivx.com/X6X${numId}X`,
+                `https://www.subdivx.com/${numId}`,
                 '_blank',
                 'noopener,noreferrer'
               )
@@ -189,7 +189,7 @@ function SearchInput() {
               {externalResults.slice(0, 5).map((item, i) => {
                 const idx = internalResults.length + i
                 const numId = item.numerical_id
-                const subdivxUrl = numId ? `https://www.subdivx.com/X6X${numId}X` : null
+                const subdivxUrl = numId ? `https://www.subdivx.com/${numId}` : null
                 const Tag = subdivxUrl ? 'a' : 'span'
                 return (
                   <Tag
