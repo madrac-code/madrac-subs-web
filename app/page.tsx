@@ -37,7 +37,7 @@ function SearchInput() {
     <div ref={ref} className="flex items-center">
       <div
         className={`flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800/50 transition-all duration-300 overflow-hidden ${
-          open ? 'w-[300px] px-3 py-1.5' : 'w-9 h-9 justify-center cursor-pointer hover:bg-zinc-700'
+          open ? 'w-[400px] px-3 py-1.5' : 'w-9 h-9 justify-center cursor-pointer hover:bg-zinc-700'
         }`}
         onClick={() => { if (!open) setOpen(true) }}
       >
@@ -131,7 +131,7 @@ export default function Home() {
   return (
     <>
       <Navbar />
-      <div className="fixed top-14 sm:top-16 right-4 sm:right-6 z-40 mt-1">
+      <div className="fixed top-14 sm:top-16 right-4 sm:right-6 z-40 mt-6">
         <SearchInput />
       </div>
 
