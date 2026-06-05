@@ -154,12 +154,21 @@ export default function Home() {
         </div>
 
         <div className="mt-8 sm:mt-12 w-full flex flex-col lg:flex-row justify-between items-start gap-8 px-4 sm:px-6">
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 min-h-[280px] sm:min-h-[360px] w-full lg:w-[min(45%,480px)] flex items-center justify-center">
-            <div className="text-center text-zinc-600 px-4">
-              <svg className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 min-h-[280px] sm:min-h-[360px] w-full lg:w-[min(45%,480px)] flex items-center justify-center overflow-hidden relative">
+            <video
+              className="absolute inset-0 w-full h-full object-cover"
+              src="/videos/demo.mp4"
+              autoPlay
+              loop
+              muted
+              playsInline
+              onError={(e) => { (e.target as HTMLVideoElement).style.display = 'none' }}
+            />
+            <div className="flex flex-col items-center gap-3 text-zinc-600 pointer-events-none">
+              <svg className="w-12 h-12 sm:w-16 sm:h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
-              <p className="text-xs sm:text-sm">Captura de pantalla del software</p>
+              <p className="text-xs sm:text-sm">Demo del software</p>
             </div>
           </div>
           <div className="w-full lg:w-[580px] shrink-0">
