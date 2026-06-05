@@ -58,7 +58,7 @@ export function CommunityLibrary() {
       .from('subtitles')
       .select('id, original_video_name, language, filename, download_count, duration_sec, version, avg_confidence, user_id, created_at', { count: 'exact' })
       .eq('status', 'published')
-      .order(orderColumn, { ascending: sortBy !== 'popular' })
+      .order(orderColumn, { ascending: false })
       .limit(20)
       .then(({ data, error, count }) => {
         if (!error && data) {
