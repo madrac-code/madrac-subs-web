@@ -80,7 +80,7 @@ function SearchInput() {
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    const total = internalResults.length + externalResults.length
+    const total = internalResults.length + filteredExternal.length
 
     switch (e.key) {
       case 'ArrowDown':
@@ -97,11 +97,10 @@ function SearchInput() {
           if (selectedIdx < internalResults.length) {
             setQuery(internalResults[selectedIdx].original_video_name)
           } else {
-            const item = externalResults[selectedIdx - internalResults.length]
-            const subId = item?.subdivx_id
-            if (subId) {
+            const item = filteredExternal[selectedIdx - internalResults.length]
+            if (item) {
               window.open(
-                `https://www.subdivx.com/X6X${subId}X`,
+                `https://www.subdivx.com/X6X${item.numerical_id}X`,
                 '_blank',
                 'noopener,noreferrer'
               )
@@ -132,7 +131,8 @@ function SearchInput() {
     return lang ? FLAGS[lang.toLowerCase()] || '🌐' : '🌐'
   }
 
-  const showDropdown = open && (internalResults.length > 0 || externalResults.length > 0 || (loading && query.length >= 2))
+  const filteredExternal = externalResults.filter((x: any) => x.numerical_id)
+  const showDropdown = open && (internalResults.length > 0 || filteredExternal.length > 0 || (loading && query.length >= 2))
 
   return (
     <div ref={ref} className="relative flex items-center">
@@ -181,17 +181,17 @@ function SearchInput() {
             </button>
           ))}
 
-          {externalResults.length > 0 && (
+          {filteredExternal.length > 0 && (
             <>
               <div className="px-4 py-2 text-xs text-zinc-500 border-t border-zinc-700/50 flex items-center gap-2">
                 🌐 Resultados Externos (SubDivX)
               </div>
-              {externalResults.slice(0, 5).map((item, i) => {
+              {filteredExternal.map((item, i) => {
                 const idx = internalResults.length + i
                 return (
                   <a
                     key={item.id}
-                    href={`https://www.subdivx.com/X6X${item.subdivx_id || item.id}X`}
+                    href={`https://www.subdivx.com/X6X${item.numerical_id}X`}
                     target="_blank"
                     rel="noopener noreferrer"
                     onMouseEnter={() => setSelectedIdx(idx)}
@@ -209,7 +209,7 @@ function SearchInput() {
             </>
           )}
 
-          {!loading && internalResults.length === 0 && externalResults.length === 0 && query.length >= 2 && (
+          {!loading && internalResults.length === 0 && filteredExternal.length === 0 && query.length >= 2 && (
             <div className="px-4 py-3 text-sm text-zinc-500">Sin resultados</div>
           )}
         </div>

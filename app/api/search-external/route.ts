@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 
 let lastFetch = 0
 
-async function fetchSubdivxId(uuid: string, token: string): Promise<string | null> {
+async function fetchNumericalId(uuid: string, token: string): Promise<string | null> {
   try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 2000)
     const res = await fetch(
       `https://subx-api.duckdns.org/api/subtitles/${uuid}/download`,
-      { method: 'HEAD', headers: { Authorization: `Bearer ${token}` } }
+      { method: 'HEAD', headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }
     )
+    clearTimeout(timeout)
     const disposition = res.headers.get('content-disposition') || ''
     const match = disposition.match(/_(\d+)_.*\.rar$/)
     return match ? match[1] : null
@@ -47,16 +50,16 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await res.json()
-    const items = data.items || []
+    const items = (data.items || []).slice(0, 5)
 
     const token = process.env.SUBX_API_TOKEN || ''
     const ids = await Promise.all(
-      items.slice(0, 5).map((item: any) => fetchSubdivxId(item.id, token))
+      items.map((item: any) => fetchNumericalId(item.id, token))
     )
 
-    const enriched = items.slice(0, 5).map((item: any, i: number) => ({
+    const enriched = items.map((item: any, i: number) => ({
       ...item,
-      subdivx_id: ids[i],
+      numerical_id: ids[i],
     }))
 
     return NextResponse.json({ items: enriched })
