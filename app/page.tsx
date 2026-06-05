@@ -5,12 +5,56 @@ import { APP_NAME, APP_TAGLINE } from '@/lib/constants'
 import { CommunityLibrary } from '@/components/CommunityLibrary'
 import { Leaderboard } from '@/components/Leaderboard'
 import { useLatestRelease } from '@/hooks/useLatestRelease'
+import { useRef, useState, useEffect } from 'react'
 
 function handleDownload(platform: string) {
   const supabase = createBrowserSupabaseClient()
   supabase.from('download_stats').insert({ platform, source: 'lasombrademadrac' }).then(({ error }) => {
     if (error) console.warn('[tracking] Error registrando descarga:', error.message)
   })
+}
+
+function SearchInput() {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  useEffect(() => {
+    if (open && inputRef.current) inputRef.current.focus()
+  }, [open])
+
+  return (
+    <div ref={ref} className="flex items-center">
+      <div
+        className={`flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800/50 transition-all duration-300 overflow-hidden ${
+          open ? 'w-[300px] px-3 py-1.5' : 'w-9 h-9 justify-center cursor-pointer hover:bg-zinc-700'
+        }`}
+        onClick={() => { if (!open) setOpen(true) }}
+      >
+        <svg className="w-4 h-4 shrink-0 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder="Buscar subtítulos…"
+          className={`bg-transparent text-sm text-zinc-200 outline-none placeholder-zinc-500 transition-opacity duration-300 ${
+            open ? 'opacity-100 w-full' : 'opacity-0 w-0 p-0'
+          }`}
+        />
+      </div>
+    </div>
+  )
 }
 
 function Navbar() {
@@ -26,7 +70,10 @@ function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-md border-b border-zinc-800">
       <div className="px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
-        <span className="text-base sm:text-lg font-bold tracking-tight text-white">{APP_NAME}</span>
+        <div className="flex items-center gap-4">
+          <span className="text-base sm:text-lg font-bold tracking-tight text-white">{APP_NAME}</span>
+          <SearchInput />
+        </div>
         <button
           type="button"
           onClick={iniciarSesionGoogle}
@@ -115,7 +162,7 @@ export default function Home() {
               <p className="text-xs sm:text-sm">Captura de pantalla del software</p>
             </div>
           </div>
-          <div className="w-full lg:w-[540px] shrink-0">
+          <div className="w-full lg:w-[580px] shrink-0">
             <CommunityLibrary />
           </div>
         </div>
