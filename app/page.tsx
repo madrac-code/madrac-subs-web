@@ -100,7 +100,7 @@ function SearchInput() {
             const item = externalResults[selectedIdx - internalResults.length]
             if (item?.id) {
               window.open(
-                `https://www.subdivx.com/index.php?accion=5&buscar=${item.id}`,
+                `https://www.subdivx.com/X6X${item.id}X`,
                 '_blank',
                 'noopener,noreferrer'
               )
@@ -190,7 +190,7 @@ function SearchInput() {
                 return (
                   <a
                     key={item.id}
-                    href={`https://www.subdivx.com/index.php?accion=5&buscar=${item.id}`}
+                    href={`https://www.subdivx.com/X6X${item.id}X`}
                     target="_blank"
                     rel="noopener noreferrer"
                     onMouseEnter={() => setSelectedIdx(idx)}
