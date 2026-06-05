@@ -100,7 +100,7 @@ function SearchInput() {
             const item = externalResults[selectedIdx - internalResults.length]
             if (item?.id) {
               window.open(
-                `https://subx-api.duckdns.org/api/subtitles/${item.id}/download`,
+                `https://www.subdivx.com/index.php?accion=5&buscar=${item.id}`,
                 '_blank',
                 'noopener,noreferrer'
               )
@@ -190,7 +190,7 @@ function SearchInput() {
                 return (
                   <a
                     key={item.id}
-                    href={`https://subx-api.duckdns.org/api/subtitles/${item.id}/download`}
+                    href={`https://www.subdivx.com/index.php?accion=5&buscar=${item.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     onMouseEnter={() => setSelectedIdx(idx)}
