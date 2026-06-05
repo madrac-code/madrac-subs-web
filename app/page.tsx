@@ -104,8 +104,8 @@ export default function Home() {
             <DownloadButton href={urls.linux} platform="Linux" label="Linux (.AppImage)" disabled={loading} />
           </div>
 
-          <div className="mt-8 sm:mt-12 grid grid-cols-1 lg:grid-cols-[1fr_1.25fr] gap-4 sm:gap-6 max-w-4xl mx-auto">
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 min-h-[280px] sm:min-h-[320px] flex items-center justify-center">
+          <div className="mt-8 sm:mt-12 grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 sm:gap-8 max-w-5xl mx-auto items-start">
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 min-h-[280px] sm:min-h-[360px] flex items-center justify-center">
               <div className="text-center text-zinc-600 px-4">
                 <svg className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
