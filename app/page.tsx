@@ -1,9 +1,10 @@
 'use client'
 
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
-import { APP_NAME, APP_TAGLINE, DOWNLOAD_WINDOWS, DOWNLOAD_LINUX } from '@/lib/constants'
+import { APP_NAME, APP_TAGLINE } from '@/lib/constants'
 import { CommunityLibrary } from '@/components/CommunityLibrary'
 import { Leaderboard } from '@/components/Leaderboard'
+import { useLatestRelease } from '@/hooks/useLatestRelease'
 
 function handleDownload(platform: string) {
   const supabase = createBrowserSupabaseClient()
@@ -55,7 +56,7 @@ function LinuxIcon() {
   )
 }
 
-function DownloadButton({ href, label, platform }: { href: string; label: string; platform: string }) {
+function DownloadButton({ href, label, platform, disabled }: { href: string; label: string; platform: string; disabled?: boolean }) {
   const Icon = platform === 'Windows' ? WindowsIcon : LinuxIcon
 
   function handleClick() {
@@ -67,7 +68,12 @@ function DownloadButton({ href, label, platform }: { href: string; label: string
     <button
       type="button"
       onClick={handleClick}
-      className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-white text-black font-semibold px-5 py-3 sm:px-6 sm:py-3 rounded-xl hover:bg-zinc-200 transition-colors text-sm sm:text-base"
+      className={`w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-5 py-3 sm:px-6 sm:py-3 rounded-xl text-sm sm:text-base font-semibold transition-colors ${
+        disabled
+          ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+          : 'bg-white text-black hover:bg-zinc-200'
+      }`}
+      disabled={disabled}
     >
       <Icon />
       {label}
@@ -76,6 +82,8 @@ function DownloadButton({ href, label, platform }: { href: string; label: string
 }
 
 export default function Home() {
+  const { urls, loading } = useLatestRelease()
+
   return (
     <>
       <Navbar />
@@ -92,8 +100,8 @@ export default function Home() {
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-2 sm:px-0">
-            <DownloadButton href={DOWNLOAD_WINDOWS} platform="Windows" label="Windows (.exe)" />
-            <DownloadButton href={DOWNLOAD_LINUX} platform="Linux" label="Linux (.AppImage)" />
+            <DownloadButton href={urls.windows} platform="Windows" label="Windows (.exe)" disabled={loading} />
+            <DownloadButton href={urls.linux} platform="Linux" label="Linux (.AppImage)" disabled={loading} />
           </div>
 
           <div className="mt-8 sm:mt-12 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 max-w-4xl mx-auto">
