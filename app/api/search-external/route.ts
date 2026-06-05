@@ -16,7 +16,7 @@ async function fetchNumericalId(uuid: string, token: string): Promise<string | n
     const disposition = res.headers.get('content-disposition') || ''
     controller.abort()
 
-    const match = disposition.match(/_(\d+)_.*?\.(rar|zip|7z|srt)/)
+    const match = disposition.match(/.*_(\d+)_\./)
     return match ? match[1] : null
   } catch {
     return null
