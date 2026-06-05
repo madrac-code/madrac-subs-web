@@ -16,13 +16,23 @@ function handleDownload(platform: string) {
 
 function SearchInput() {
   const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [internalResults, setInternalResults] = useState<any[]>([])
+  const [externalResults, setExternalResults] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [selectedIdx, setSelectedIdx] = useState(-1)
   const ref = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const supabaseRef = useRef(createBrowserSupabaseClient())
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false)
+        setQuery('')
+        setInternalResults([])
+        setExternalResults([])
       }
     }
     document.addEventListener('mousedown', handleClick)
@@ -33,8 +43,98 @@ function SearchInput() {
     if (open && inputRef.current) inputRef.current.focus()
   }, [open])
 
+  function handleInput(value: string) {
+    setQuery(value)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+
+    if (value.length < 2) {
+      setInternalResults([])
+      setExternalResults([])
+      setSelectedIdx(-1)
+      return
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true)
+
+      const [internal, external] = await Promise.all([
+        supabaseRef.current
+          .from('subtitles')
+          .select('id, original_video_name, language, download_count, filename')
+          .ilike('original_video_name', `%${value}%`)
+          .eq('status', 'published')
+          .order('download_count', { ascending: false })
+          .limit(5)
+          .then(({ data }) => data || []),
+        fetch(`/api/search-external?query=${encodeURIComponent(value)}&type=movie`)
+          .then(r => r.json())
+          .then(d => d.items || [])
+          .catch(() => []),
+      ])
+
+      setInternalResults(internal)
+      setExternalResults(external)
+      setLoading(false)
+      setSelectedIdx(-1)
+    }, 300)
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    const total = internalResults.length + externalResults.length
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        setSelectedIdx(prev => (prev < total - 1 ? prev + 1 : 0))
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        setSelectedIdx(prev => (prev > 0 ? prev - 1 : total - 1))
+        break
+      case 'Enter':
+        e.preventDefault()
+        if (selectedIdx >= 0) {
+          if (selectedIdx < internalResults.length) {
+            setQuery(internalResults[selectedIdx].original_video_name)
+          } else {
+            const item = externalResults[selectedIdx - internalResults.length]
+            if (item?.id) {
+              window.open(
+                `https://subx-api.duckdns.org/api/subtitles/${item.id}/download`,
+                '_blank',
+                'noopener,noreferrer'
+              )
+            }
+          }
+        }
+        break
+      case 'Escape':
+        setOpen(false)
+        setQuery('')
+        setInternalResults([])
+        setExternalResults([])
+        setSelectedIdx(-1)
+        inputRef.current?.blur()
+        break
+    }
+  }
+
+  const FLAGS: Record<string, string> = {
+    es: '🇪🇸', 'es-ES': '🇪🇸', 'es-MX': '🇲🇽',
+    en: '🇺🇸', 'en-US': '🇺🇸', 'en-GB': '🇬🇧',
+    fr: '🇫🇷', pt: '🇧🇷', 'pt-BR': '🇧🇷',
+    de: '🇩🇪', it: '🇮🇹', ja: '🇯🇵', zh: '🇨🇳',
+    ru: '🇷🇺', ko: '🇰🇷', ar: '🇸🇦',
+  }
+
+  function flagEmoji(lang: string | null) {
+    return lang ? FLAGS[lang.toLowerCase()] || '🌐' : '🌐'
+  }
+
+  const showDropdown = open && (internalResults.length > 0 || externalResults.length > 0 || (loading && query.length >= 2))
+
   return (
-    <div ref={ref} className="flex items-center">
+    <div ref={ref} className="relative flex items-center">
       <div
         className={`flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800/50 transition-all duration-300 overflow-hidden ${
           open ? 'w-[400px] px-3 py-1.5' : 'w-9 h-9 justify-center cursor-pointer hover:bg-zinc-700'
@@ -48,11 +148,71 @@ function SearchInput() {
           ref={inputRef}
           type="text"
           placeholder="Buscar subtítulos…"
+          value={query}
+          onChange={e => handleInput(e.target.value)}
+          onKeyDown={handleKeyDown}
           className={`bg-transparent text-sm text-zinc-200 outline-none placeholder-zinc-500 transition-opacity duration-300 ${
             open ? 'opacity-100 w-full' : 'opacity-0 w-0 p-0'
           }`}
         />
       </div>
+
+      {showDropdown && (
+        <div className="absolute top-full right-0 mt-2 w-[400px] bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl overflow-hidden z-50 max-h-96 overflow-y-auto">
+          {loading && internalResults.length === 0 && (
+            <div className="px-4 py-3 text-sm text-zinc-500">Buscando...</div>
+          )}
+
+          {internalResults.map((item, i) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setQuery(item.original_video_name)}
+              onMouseEnter={() => setSelectedIdx(i)}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${
+                selectedIdx === i ? 'bg-zinc-700' : 'hover:bg-zinc-800'
+              }`}
+            >
+              <span className="shrink-0">📄</span>
+              <span className="flex-1 truncate text-zinc-200">{item.original_video_name}</span>
+              <span className="shrink-0 text-base">{flagEmoji(item.language)}</span>
+              <span className="shrink-0 text-xs text-zinc-500">{item.download_count}↓</span>
+            </button>
+          ))}
+
+          {externalResults.length > 0 && (
+            <>
+              <div className="px-4 py-2 text-xs text-zinc-500 border-t border-zinc-700/50 flex items-center gap-2">
+                🌐 Resultados Externos (SubDivX)
+              </div>
+              {externalResults.slice(0, 5).map((item, i) => {
+                const idx = internalResults.length + i
+                return (
+                  <a
+                    key={item.id}
+                    href={`https://subx-api.duckdns.org/api/subtitles/${item.id}/download`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onMouseEnter={() => setSelectedIdx(idx)}
+                    className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
+                      selectedIdx === idx ? 'bg-zinc-700' : 'hover:bg-zinc-800'
+                    }`}
+                  >
+                    <span className="shrink-0">📄</span>
+                    <span className="flex-1 truncate text-zinc-200">{item.title}</span>
+                    <span className="shrink-0 text-xs text-zinc-400 truncate max-w-[80px]">{item.uploader_name}</span>
+                    <span className="shrink-0 text-base">🇪🇸</span>
+                  </a>
+                )
+              })}
+            </>
+          )}
+
+          {!loading && internalResults.length === 0 && externalResults.length === 0 && query.length >= 2 && (
+            <div className="px-4 py-3 text-sm text-zinc-500">Sin resultados</div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
