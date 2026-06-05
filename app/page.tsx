@@ -70,10 +70,7 @@ function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-md border-b border-zinc-800">
       <div className="px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
-        <div className="flex items-center gap-4">
           <span className="text-base sm:text-lg font-bold tracking-tight text-white">{APP_NAME}</span>
-          <SearchInput />
-        </div>
         <button
           type="button"
           onClick={iniciarSesionGoogle}
@@ -134,6 +131,9 @@ export default function Home() {
   return (
     <>
       <Navbar />
+      <div className="fixed top-14 sm:top-16 right-4 sm:right-6 z-40 mt-1">
+        <SearchInput />
+      </div>
 
       <main className="min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 pt-14 sm:pt-16">
         <div className="w-full max-w-3xl mx-auto text-center space-y-8 sm:space-y-10">
