@@ -3,17 +3,20 @@ import { NextRequest, NextResponse } from 'next/server'
 let lastFetch = 0
 
 async function fetchNumericalId(uuid: string, token: string): Promise<string | null> {
+  const controller = new AbortController()
   try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 2000)
     const res = await fetch(
       `https://subx-api.duckdns.org/api/subtitles/${uuid}/download`,
-      { method: 'HEAD', headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }
+      {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
+      }
     )
-    clearTimeout(timeout)
     const disposition = res.headers.get('content-disposition') || ''
-    console.log('[subx] disposition:', disposition)
-    const match = disposition.match(/_(\d+)_.*\.(rar|zip|7z|srt)$/)
+    controller.abort()
+
+    const match = disposition.match(/_(\d+)_.*?\.(rar|zip|7z|srt)/)
     return match ? match[1] : null
   } catch {
     return null
@@ -52,8 +55,8 @@ export async function GET(request: NextRequest) {
 
     const data = await res.json()
     const items = (data.items || []).slice(0, 5)
-
     const token = process.env.SUBX_API_TOKEN || ''
+
     const ids = await Promise.all(
       items.map((item: any) => fetchNumericalId(item.id, token))
     )

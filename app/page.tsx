@@ -80,7 +80,7 @@ function SearchInput() {
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    const total = internalResults.length + filteredExternal.length
+    const total = internalResults.length + externalResults.length
 
     switch (e.key) {
       case 'ArrowDown':
@@ -97,10 +97,11 @@ function SearchInput() {
           if (selectedIdx < internalResults.length) {
             setQuery(internalResults[selectedIdx].original_video_name)
           } else {
-            const item = filteredExternal[selectedIdx - internalResults.length]
-            if (item) {
+            const item = externalResults[selectedIdx - internalResults.length]
+            const numId = item?.numerical_id
+            if (numId) {
               window.open(
-                `https://www.subdivx.com/X6X${item.numerical_id}X`,
+                `https://www.subdivx.com/X6X${numId}X`,
                 '_blank',
                 'noopener,noreferrer'
               )
@@ -131,8 +132,7 @@ function SearchInput() {
     return lang ? FLAGS[lang.toLowerCase()] || '🌐' : '🌐'
   }
 
-  const filteredExternal = externalResults.filter((x: any) => x.numerical_id)
-  const showDropdown = open && (internalResults.length > 0 || filteredExternal.length > 0 || (loading && query.length >= 2))
+  const showDropdown = open && (internalResults.length > 0 || externalResults.length > 0 || (loading && query.length >= 2))
 
   return (
     <div ref={ref} className="relative flex items-center">
@@ -181,35 +181,36 @@ function SearchInput() {
             </button>
           ))}
 
-          {filteredExternal.length > 0 && (
+          {externalResults.length > 0 && (
             <>
               <div className="px-4 py-2 text-xs text-zinc-500 border-t border-zinc-700/50 flex items-center gap-2">
                 🌐 Resultados Externos (SubDivX)
               </div>
-              {filteredExternal.map((item, i) => {
+              {externalResults.slice(0, 5).map((item, i) => {
                 const idx = internalResults.length + i
+                const numId = item.numerical_id
+                const subdivxUrl = numId ? `https://www.subdivx.com/X6X${numId}X` : null
+                const Tag = subdivxUrl ? 'a' : 'span'
                 return (
-                  <a
+                  <Tag
                     key={item.id}
-                    href={`https://www.subdivx.com/X6X${item.numerical_id}X`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    {...(subdivxUrl ? { href: subdivxUrl, target: '_blank', rel: 'noopener noreferrer' } : {})}
                     onMouseEnter={() => setSelectedIdx(idx)}
                     className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
                       selectedIdx === idx ? 'bg-zinc-700' : 'hover:bg-zinc-800'
-                    }`}
+                    } ${!subdivxUrl ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
                   >
                     <span className="shrink-0">📄</span>
                     <span className="flex-1 truncate text-zinc-200">{item.title}</span>
                     <span className="shrink-0 text-xs text-zinc-400 truncate max-w-[80px]">{item.uploader_name}</span>
                     <span className="shrink-0 text-base">🇪🇸</span>
-                  </a>
+                  </Tag>
                 )
               })}
             </>
           )}
 
-          {!loading && internalResults.length === 0 && filteredExternal.length === 0 && query.length >= 2 && (
+          {!loading && internalResults.length === 0 && externalResults.length === 0 && query.length >= 2 && (
             <div className="px-4 py-3 text-sm text-zinc-500">Sin resultados</div>
           )}
         </div>
