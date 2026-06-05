@@ -115,7 +115,7 @@ export default function Home() {
               <p className="text-xs sm:text-sm">Captura de pantalla del software</p>
             </div>
           </div>
-          <div className="w-full lg:w-[300px] shrink-0">
+          <div className="w-full lg:w-[360px] shrink-0">
             <CommunityLibrary />
           </div>
         </div>
