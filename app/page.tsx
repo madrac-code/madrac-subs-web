@@ -232,11 +232,11 @@ function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-md border-b border-zinc-800">
       <div className="px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
-          <span className="text-base sm:text-lg font-bold tracking-tight text-white">{APP_NAME}</span>
+          <span className="max-sm:text-[13px] sm:text-lg font-bold tracking-tight text-white">{APP_NAME}</span>
         <button
           type="button"
           onClick={iniciarSesionGoogle}
-          className="text-sm text-zinc-400 hover:text-white transition-colors"
+          className="max-sm:text-[13px] text-sm text-zinc-400 hover:text-white transition-colors"
         >
           Iniciar sesión
         </button>
@@ -293,11 +293,11 @@ export default function Home() {
   return (
     <>
       <Navbar />
-      <div className="fixed top-14 sm:top-16 right-4 sm:right-6 z-40 mt-6">
+      <div className="fixed top-14 sm:top-16 right-4 sm:right-6 z-40 max-sm:mt-[19px] mt-6">
         <SearchInput />
       </div>
 
-      <main className="min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 pt-14 sm:pt-16">
+      <main className="min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 max-sm:pt-[110px] sm:pt-16">
         <div className="w-full max-w-3xl mx-auto text-center space-y-8 sm:space-y-10">
           <div className="space-y-4 sm:space-y-5">
             <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight text-white leading-tight">
