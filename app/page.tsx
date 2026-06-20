@@ -8,10 +8,11 @@ import { useLatestRelease } from '@/hooks/useLatestRelease'
 import { useRef, useState, useEffect } from 'react'
 
 function handleDownload(platform: string) {
-  const supabase = createBrowserSupabaseClient()
-  supabase.from('download_stats').insert({ platform, source: 'lasombrademadrac' }).then(({ error }) => {
-    if (error) console.warn('[tracking] Error registrando descarga:', error.message)
-  })
+  fetch('/api/track-app-download', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ platform }),
+  }).catch(() => {})
 }
 
 function SearchInput() {

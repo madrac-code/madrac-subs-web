@@ -1,5 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+const WINDOW_MS = 60_000
+const MAX_REQUESTS = 20
+const CLEANUP_INTERVAL = 300_000
+
+const hits = new Map<string, number[]>()
+
+function getClientIp(request: NextRequest): string {
+  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || request.headers.get('x-real-ip')?.trim()
+    || '127.0.0.1'
+}
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const timestamps = hits.get(ip) || []
+  const recent = timestamps.filter(t => now - t < WINDOW_MS)
+
+  if (recent.length >= MAX_REQUESTS) {
+    return false
+  }
+
+  recent.push(now)
+  hits.set(ip, recent)
+  return true
+}
+
+function cleanupStale() {
+  const now = Date.now()
+  for (const [ip, timestamps] of hits) {
+    const recent = timestamps.filter(t => now - t < WINDOW_MS)
+    if (recent.length === 0) {
+      hits.delete(ip)
+    } else {
+      hits.set(ip, recent)
+    }
+  }
+}
+
+setInterval(cleanupStale, CLEANUP_INTERVAL)
+
 let lastFetch = 0
 
 async function fetchNumericalId(uuid: string, token: string): Promise<string | null> {
@@ -15,11 +55,9 @@ async function fetchNumericalId(uuid: string, token: string): Promise<string | n
     )
     const disposition = res.headers.get('content-disposition') || ''
     controller.abort()
-    console.log('HEADER COMPLETO:', disposition)
 
     const match = disposition.match(/.*_(\d+)_/)
     const id = match ? match[1] : null
-    console.log('ID EXTRAÍDO:', id)
     return id && id.length >= 5 ? id : null
   } catch {
     return null
@@ -27,6 +65,15 @@ async function fetchNumericalId(uuid: string, token: string): Promise<string | n
 }
 
 export async function GET(request: NextRequest) {
+  const ip = getClientIp(request)
+
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json(
+      { error: 'Demasiadas solicitudes. Intenta de nuevo en un minuto.' },
+      { status: 429 }
+    )
+  }
+
   const query = request.nextUrl.searchParams.get('query')
   const type = request.nextUrl.searchParams.get('type') || 'movie'
 

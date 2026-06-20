@@ -98,12 +98,11 @@ export function CommunityLibrary() {
   }
 
   function handleDownload(sub: DesktopSubtitle) {
-    const supabase = createBrowserSupabaseClient()
-    supabase.from('subtitle_downloads').insert({
-      subtitle_id: sub.id,
-    }).then(({ error }) => {
-      if (error) console.warn('[downloads] error:', error.message)
-    })
+    fetch('/api/track-download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subtitle_id: sub.id }),
+    }).catch(() => {})
     const url = `${SUPABASE_URL}/storage/v1/object/public/subtitle-files/${sub.filename}`
     window.open(url, '_blank', 'noopener,noreferrer')
   }
