@@ -61,8 +61,8 @@ function SearchInput() {
       const [internal, external] = await Promise.all([
         supabaseRef.current
           .from('subtitles')
-          .select('id, original_video_name, language, download_count, filename')
-          .ilike('original_video_name', `%${value}%`)
+          .select('id, original_video_name, title_clean, language, download_count, filename, year')
+          .or(`original_video_name.ilike.%${value}%,title_clean.ilike.%${value}%`)
           .eq('status', 'published')
           .order('download_count', { ascending: false })
           .limit(5)
@@ -176,7 +176,10 @@ function SearchInput() {
               }`}
             >
               <span className="shrink-0">📄</span>
-              <span className="flex-1 truncate text-zinc-200">{item.original_video_name}</span>
+              <span className="flex-1 truncate text-zinc-200">
+                {item.title_clean || item.original_video_name}
+                {item.year && <span className="text-zinc-500 ml-1">({item.year})</span>}
+              </span>
               <span className="shrink-0 text-base">{flagEmoji(item.language)}</span>
               <span className="shrink-0 text-xs text-zinc-500">{item.download_count}↓</span>
             </button>

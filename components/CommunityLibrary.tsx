@@ -14,6 +14,17 @@ type DesktopSubtitle = {
   avg_confidence: number | null
   user_id: string | null
   created_at: string
+  title_clean?: string | null
+  season?: number | null
+  episode?: number | null
+  year?: number | null
+  resolution?: string | null
+  video_codec?: string | null
+  audio_codec?: string | null
+  fps?: number | null
+  release_group?: string | null
+  source_type?: string | null
+  parse_confidence?: number | null
 }
 
 type Profile = {
@@ -55,7 +66,7 @@ export function CommunityLibrary() {
 
     supabase
       .from('subtitles')
-      .select('id, original_video_name, language, filename, download_count, duration_sec, version, avg_confidence, user_id, created_at', { count: 'exact' })
+      .select('id, original_video_name, language, filename, download_count, duration_sec, version, avg_confidence, user_id, created_at, resolution, fps, video_codec, audio_codec, release_group, season, episode, year, title_clean, source_type, parse_confidence', { count: 'exact' })
       .eq('status', 'published')
       .order(orderColumn, { ascending: false })
       .limit(20)
@@ -163,7 +174,8 @@ export function CommunityLibrary() {
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-sm text-zinc-200 truncate font-medium">
-                    {sub.original_video_name}
+                    {sub.title_clean || sub.original_video_name}
+                    {sub.year && <span className="text-zinc-500 ml-1 font-normal">({sub.year})</span>}
                   </p>
                   <div className="flex items-center gap-2 text-xs text-zinc-500 mt-0.5 flex-wrap">
                     <span>{sub.language}</span>
@@ -179,6 +191,24 @@ export function CommunityLibrary() {
                       <>
                         <span>•</span>
                         <span>{sub.download_count} descargas</span>
+                      </>
+                    )}
+                    {sub.resolution && (
+                      <>
+                        <span>•</span>
+                        <span>{sub.resolution}</span>
+                      </>
+                    )}
+                    {sub.fps && (
+                      <>
+                        <span>•</span>
+                        <span>{sub.fps.toFixed(1)}fps</span>
+                      </>
+                    )}
+                    {sub.video_codec && (
+                      <>
+                        <span>•</span>
+                        <span className="uppercase">{sub.video_codec}</span>
                       </>
                     )}
                     {level && (
