@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
     }
 
     const storageRes = await fetch(
-      `${SUPABASE_URL}/storage/v1/object/public/subtitle-files/${filename}`,
+      `${SUPABASE_URL}/storage/v1/object/subtitle-files/${filename}`,
       { headers }
     )
 
