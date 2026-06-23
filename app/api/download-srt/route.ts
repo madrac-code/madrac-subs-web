@@ -59,12 +59,12 @@ export async function GET(request: NextRequest) {
       { headers }
     )
 
-    if (!res.ok || !res.headers.get('content-length')) {
+    if (!res.ok) {
       return NextResponse.json({ error: 'Subtítulo no encontrado' }, { status: 404 })
     }
 
     const rows = await res.json()
-    if (!rows || rows.length === 0) {
+    if (!Array.isArray(rows) || rows.length === 0) {
       return NextResponse.json({ error: 'Subtítulo no encontrado' }, { status: 404 })
     }
 
