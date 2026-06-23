@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fypmjtesckrgboorjibl.supabase.co",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: https://fypmjtesckrgboorjibl.supabase.co",
+              "img-src 'self' data: https://fypmjtesckrgboorjibl.supabase.co https://*.googleusercontent.com",
               "font-src 'self' https://fonts.gstatic.com",
               "connect-src 'self' https://fypmjtesckrgboorjibl.supabase.co https://api.github.com",
               "frame-src 'self' https://fypmjtesckrgboorjibl.supabase.co",
