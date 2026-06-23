@@ -221,6 +221,30 @@ function SearchInput() {
 }
 
 function Navbar() {
+  const [user, setUser] = useState<{ name: string; avatar: string } | null>(null)
+
+  useEffect(() => {
+    const supabase = createBrowserSupabaseClient()
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.user) {
+        const meta = data.session.user.user_metadata
+        setUser({
+          name: meta.full_name || data.session.user.email || 'Usuario',
+          avatar: meta.avatar_url || '',
+        })
+      }
+    })
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const meta = session.user.user_metadata
+        setUser({ name: meta.full_name || session.user.email || 'Usuario', avatar: meta.avatar_url || '' })
+      } else {
+        setUser(null)
+      }
+    })
+    return () => listener?.subscription.unsubscribe()
+  }, [])
+
   async function iniciarSesionGoogle() {
     const supabase = createBrowserSupabaseClient()
     const redirectTo = `${window.location.origin}/auth/callback`
@@ -230,17 +254,39 @@ function Navbar() {
     })
   }
 
+  async function cerrarSesion() {
+    const supabase = createBrowserSupabaseClient()
+    await supabase.auth.signOut()
+  }
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-md border-b border-zinc-800">
       <div className="px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
           <span className="max-sm:text-[13px] sm:text-lg font-bold tracking-tight text-white">{APP_NAME}</span>
-        <button
-          type="button"
-          onClick={iniciarSesionGoogle}
-          className="max-sm:text-[13px] text-sm text-zinc-400 hover:text-white transition-colors"
-        >
-          Iniciar sesión
-        </button>
+        {user ? (
+          <div className="flex items-center gap-2.5">
+            {user.avatar && (
+              <img src={user.avatar} alt="" className="w-6 h-6 sm:w-7 sm:h-7 rounded-full" />
+            )}
+            <span className="max-sm:text-[13px] text-sm text-zinc-200">{user.name}</span>
+            <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" title="Online" />
+            <button
+              type="button"
+              onClick={cerrarSesion}
+              className="max-sm:text-[13px] text-sm text-zinc-500 hover:text-zinc-300 transition-colors ml-1"
+            >
+              Salir
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={iniciarSesionGoogle}
+            className="max-sm:text-[13px] text-sm text-zinc-400 hover:text-white transition-colors"
+          >
+            Iniciar sesión
+          </button>
+        )}
       </div>
     </nav>
   )

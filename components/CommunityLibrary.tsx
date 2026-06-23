@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
-import { SUPABASE_URL } from '@/lib/constants'
 
 type DesktopSubtitle = {
   id: string
@@ -103,8 +102,7 @@ export function CommunityLibrary() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ subtitle_id: sub.id }),
     }).catch(() => {})
-    const url = `${SUPABASE_URL}/storage/v1/object/public/subtitle-files/${sub.filename}`
-    window.open(url, '_blank', 'noopener,noreferrer')
+    window.open(`/api/download-srt?id=${sub.id}`, '_blank', 'noopener,noreferrer')
   }
 
   return (
