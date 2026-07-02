@@ -10,7 +10,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'MADRAC-SUBS | Transcripción y Traducción con IA',
   description:
-    'Transcripción y traducción profesional de video con inteligencia artificial. Descarga la app para Windows o Linux.',
+    'Transcripción, traducción y EDICIÓN amateur de video con IA. Descarga la app (portable) para Windows o Linux.',
 }
 
 export default function RootLayout({
