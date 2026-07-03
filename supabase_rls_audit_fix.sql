@@ -40,6 +40,9 @@ DROP POLICY IF EXISTS "Subtitles are readable by authenticated users" ON subtitl
 DROP POLICY IF EXISTS "Published subtitles are publicly readable" ON subtitles;
 DROP POLICY IF EXISTS "Users can read own unpublished subtitles" ON subtitles;
 
+DROP POLICY IF EXISTS "Published subtitles are publicly readable" ON subtitles;
+DROP POLICY IF EXISTS "Users can read own unpublished subtitles" ON subtitles;
+
 CREATE POLICY "Published subtitles are publicly readable"
   ON subtitles FOR SELECT
   USING (status = 'published');
@@ -52,6 +55,7 @@ CREATE POLICY "Users can read own unpublished subtitles"
 -- INSERT: SOLO el usuario autenticado puede insertar CON SU PROPIO user_id
 -- FIX: Antes era auth.role() = 'authenticated' sin validar user_id
 DROP POLICY IF EXISTS "Authenticated users can insert subtitles" ON subtitles;
+DROP POLICY IF EXISTS "Authenticated users can insert own subtitles" ON subtitles;
 CREATE POLICY "Authenticated users can insert own subtitles"
   ON subtitles FOR INSERT
   TO authenticated
@@ -119,6 +123,7 @@ ALTER TABLE video_fingerprints ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Anyone can read video fingerprints" ON video_fingerprints;
 DROP POLICY IF EXISTS "Video fingerprints readable by authenticated users" ON video_fingerprints;
+DROP POLICY IF EXISTS "Video fingerprints are publicly readable" ON video_fingerprints;
 CREATE POLICY "Video fingerprints are publicly readable"
   ON video_fingerprints FOR SELECT
   USING (true);
