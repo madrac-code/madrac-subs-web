@@ -3,7 +3,7 @@ export const APP_NAME = 'MADRAC-SUBS'
 
 /** Descripción corta */
 export const APP_TAGLINE =
-  'Transcripción y Traducción Profesional de Video con Inteligencia Artificial'
+  'Transcripción, traducción, edición y doblaje de video con IA'
 
 /** URL base de la app */
 export const APP_BASE_URL =
