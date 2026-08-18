@@ -326,8 +326,17 @@ function LinuxIcon() {
   )
 }
 
+function DubbingIcon() {
+  return (
+    <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 14c2.2 0 4-1.8 4-4V5c0-2.2-1.8-4-4-4S8 2.8 8 5v5c0 2.2 1.8 4 4 4Z" />
+      <path d="M19 10c0 3.9-3.1 7-7 7s-7-3.1-7-7H3c0 4.6 3.4 8.4 8 8.9V21H7v2h10v-2h-4v-2.1c4.6-.5 8-4.3 8-8.9h-2Z" />
+    </svg>
+  )
+}
+
 function DownloadButton({ href, label, platform, disabled }: { href: string; label: string; platform: string; disabled?: boolean }) {
-  const Icon = platform === 'Windows' ? WindowsIcon : LinuxIcon
+  const Icon = platform === 'Windows' ? WindowsIcon : platform === 'Linux' ? LinuxIcon : DubbingIcon
 
   function handleClick() {
     handleDownload(platform)
@@ -375,6 +384,7 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-2 sm:px-0">
             <DownloadButton href={urls.windows} platform="Windows" label="Windows (.exe)" disabled={loading} />
             <DownloadButton href={urls.linux} platform="Linux" label="Linux (.AppImage)" disabled={loading} />
+            <DownloadButton href={urls.dubbing} platform="Dubbing" label="Dubbing (.exe)" disabled={loading} />
           </div>
 
         </div>

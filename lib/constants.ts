@@ -18,3 +18,6 @@ export const DOWNLOAD_WINDOWS =
 
 export const DOWNLOAD_LINUX =
   'https://github.com/madrac-web/Madrac-Subs-Releases/releases/download/v2.04Linux/MADRAC-SUBSv2.04.AppImage'
+
+export const DOWNLOAD_DUBBING_WINDOWS =
+  'https://github.com/madrac-web/Madrac-Subs-Releases/releases/download/madrac-dubbingV1.0Windows/madrac-dubbing.exe'
